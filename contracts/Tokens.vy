@@ -65,19 +65,11 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
-asset: public(ERC20)
-
-MAX_STRATEGIES: constant(uint256) = 128
-
-struct StrategyAllocation:
-    strategy: address  # TODO: Bug in Vyper prevents from using `ERC4626` here
-    numShares: uint256
+asset: public(ERC721)
 
 struct Owner:
     owner: address  # NOTE: Track ERC721 ownership here
     blockCreated: uint256
-    # NOTE: Can change allocations without changing the PortfolioId
-    allocations: DynArray[StrategyAllocation, MAX_STRATEGIES]
 
 # @dev PortfolioID {keccak(originalOwner + blockCreated)} => Owner
 idToOwner: public(HashMap[uint256, Owner])
@@ -298,7 +290,7 @@ def approve(operator: address, tokenId: uint256):
     @param operator Address to be approved for the given NFT ID.
     @param tokenId ID of the token to be approved.
     """
-    # Throws if `_tokenId` is not a valid NFT
+    # Throws if `tokenId` is not a valid NFT
     owner: address = self.idToOwner[tokenId].owner
     assert owner != ZERO_ADDRESS
 
@@ -423,7 +415,6 @@ def mint() -> uint256:
     self.idToOwner[tokenId] = Owner({
         owner: msg.sender,
         blockCreated: block.number,
-        allocations: empty(DynArray[StrategyAllocation, MAX_STRATEGIES]),
     })
     self.balanceOf[msg.sender] += 1
 
