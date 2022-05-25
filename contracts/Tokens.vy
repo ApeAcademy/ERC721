@@ -1,22 +1,21 @@
-# @version 0.3.2
+# @version 0.3.3
 
-from vyper.interfaces import ERC20
 from vyper.interfaces import ERC165
 from vyper.interfaces import ERC721
-
-import ERC4626 as ERC4626
 
 implements: ERC165
 implements: ERC721
 
+# ERC20 Token Metadata
+NAME: constant(String[20]) = "Token"
+SYMBOL: constant(String[5]) = "TKN"
+TOKENURI: constant(String[100]) = ""
 
 ############ ERC-165 #############
-
 # @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[3]) = [
+SUPPORTED_INTERFACES: constant(bytes4[2]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
-    0x5604e225,  # ERC165 interface ID of ERC4494
 ]
 
 
@@ -99,10 +98,11 @@ EIP712_DOMAIN_VERSIONHASH: constant(bytes32) = keccak256("1")
 
 
 @external
-def __init__(asset: ERC20):
+def __init__(asset: ERC721):
     """
     @dev Contract constructor.
     """
+
     self.asset = asset
 
     # ERC712 domain separator for ERC4494
@@ -116,6 +116,21 @@ def __init__(asset: ERC20):
         )
     )
 
+# ERC721 Metadata Extension
+@pure
+@external
+def name() -> String[40]:
+    return NAME
+
+@pure
+@external 
+def symbol() -> String[5]:
+    return SYMBOL
+
+@pure
+@external
+def tokenURI() -> String[100]:
+    return TOKENURI
 
 @external
 def setDomainSeparator():
@@ -205,7 +220,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
     """
     @dev Exeute transfer of a NFT.
          Throws unless `msg.sender` is the current owner, an authorized operator, or the approved
-         address for this NFT. (NOTE: `msg.sender` not allowed in private function so pass `_sender`.)
+         address for thisassert self.idToOwner[tokenId] == owner NFT. (NOTE: `msg.sender` not allowed in private function so pass `_sender`.)
          Throws if `receiver` is the zero address.
          Throws if `owner` is not the current owner.
          Throws if `tokenId` is not a valid NFT.
