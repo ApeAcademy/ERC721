@@ -6,18 +6,28 @@ from vyper.interfaces import ERC721
 implements: ERC165
 implements: ERC721
 
-# ERC20 Token Metadata
-NAME: constant(String[20]) = "Token"
-SYMBOL: constant(String[5]) = "TKN"
-TOKENURI: constant(String[100]) = ""
-
 ############ ERC-165 #############
 # @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[2]) = [
+SUPPORTED_INTERFACES: constant(bytes4[3]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
+    0x5604e225,  # ERC165 interface ID of ERC4494
 ]
 
+interface ERC4494:
+
+	def permit(
+		spender: address,
+		tokenId: uint256,
+		deadline: uint256,
+		signature: Bytes[65]
+	): nonpayable
+
+	def nonces(
+		_tokenId: uint256
+	) -> uint256: view
+
+	def DOMAIN_SEPARATOR() -> bytes32: view
 
 ############ ERC-721 #############
 
@@ -29,6 +39,17 @@ interface ERC721Receiver:
             tokenId: uint256,
             data: Bytes[1024]
         ) -> bytes32: view
+
+# Interface for ERC721Metadata
+
+interface ERC721Metadata:
+	def name() -> String[64]: view
+
+	def symbol() -> String[32]: view
+
+	def tokenURI(
+		_tokenId: uint256
+	) -> String[128]: view
 
 # @dev Emits when ownership of any NFT changes by any mechanism. This event emits when NFTs are
 #      created (`from` == 0) and destroyed (`to` == 0). Exception: during contract creation, any
@@ -66,7 +87,6 @@ event ApprovalForAll:
 
 owner: public(address)
 isMinter: public(HashMap[address, bool])
-asset: public(ERC721)
 
 # @dev TokenID => owner
 idToOwner: public(HashMap[uint256, address])
@@ -94,12 +114,20 @@ EIP712_DOMAIN_TYPEHASH: constant(bytes32) = keccak256(
 EIP712_DOMAIN_NAMEHASH: constant(bytes32) = keccak256("Owner NFT")
 EIP712_DOMAIN_VERSIONHASH: constant(bytes32) = keccak256("1")
 
+# ERC20 Token Metadata
+NAME: immutable(String[20])
+SYMBOL: immutable(String[5])
+TOKENURI: immutable(String[100])
 
 @external
-def __init__(asset: ERC721):
+def __init__(name: String[20], symbol: String[5], tokenURI: String[100]):
     """
     @dev Contract constructor.
     """
+
+    NAME = name
+    SYMBOL = symbol
+    TOKENURI = tokenURI
 
     # ERC712 domain separator for ERC4494
     self.DOMAIN_SEPARATOR = keccak256(
@@ -216,6 +244,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
     """
     @dev Exeute transfer of a NFT.
          Throws unless `msg.sender` is the current owner, an authorized operator, or the approved
+         address for this NFT. (NOTE: `msg.sender` not allowed in private function so pass `_sender`.)
          address for thisassert self.idToOwner[tokenId] == owner NFT. (NOTE: `msg.sender` not allowed in private function so pass `_sender`.)
          Throws if `receiver` is the zero address.
          Throws if `owner` is not the current owner.
@@ -407,13 +436,13 @@ def addMinter(minter: address):
     self.isMinter[msg.sender] = True
 
 @external
-def mint(receiver: address) -> uint256:
+def mint(receiver: address, tokenId: uint256) -> uint256:
     """
     @dev Create a new Owner NFT
     @notice `tokenId` cannot be owned by someone because of hash production.
     @return uint256 Computed TokenID of new Portfolio.
     """
-    # Create token
+
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
     assert self.idToOwner[tokenId] == ZERO_ADDRESS  # Sanity check
     
