@@ -64,14 +64,12 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
+owner: public(address)
+isMinter: public(HashMap[address, bool])
 asset: public(ERC721)
 
-struct Owner:
-    owner: address  # NOTE: Track ERC721 ownership here
-    blockCreated: uint256
-
-# @dev PortfolioID {keccak(originalOwner + blockCreated)} => Owner
-idToOwner: public(HashMap[uint256, Owner])
+# @dev TokenID => owner
+idToOwner: public(HashMap[uint256, address])
 
 # @dev Mapping from owner address to count of their tokens.
 balanceOf: public(HashMap[address, uint256])
@@ -102,8 +100,6 @@ def __init__(asset: ERC721):
     """
     @dev Contract constructor.
     """
-
-    self.asset = asset
 
     # ERC712 domain separator for ERC4494
     self.DOMAIN_SEPARATOR = keccak256(
@@ -170,7 +166,7 @@ def ownerOf(tokenId: uint256) -> address:
          Throws if `tokenId` is not a valid NFT.
     @param tokenId The identifier for an NFT.
     """
-    owner: address = self.idToOwner[tokenId].owner
+    owner: address = self.idToOwner[tokenId]
     # Throws if `tokenId` is not a valid NFT
     assert owner != ZERO_ADDRESS
     return owner
@@ -185,7 +181,7 @@ def getApproved(tokenId: uint256) -> address:
     @param tokenId ID of the NFT to query the approval of.
     """
     # Throws if `tokenId` is not a valid NFT
-    assert self.idToOwner[tokenId].owner != ZERO_ADDRESS
+    assert self.idToOwner[tokenId] != ZERO_ADDRESS
     return self.idToApprovals[tokenId]
 
 
@@ -201,7 +197,7 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
     @return bool whether the msg.sender is approved for the given token ID,
         is an operator of the owner, or is the owner of the token
     """
-    owner: address = self.idToOwner[tokenId].owner
+    owner: address = self.idToOwner[tokenId]
 
     if owner == spender:
         return True
@@ -229,7 +225,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
     assert self._isApprovedOrOwner(sender, tokenId)
     assert receiver != ZERO_ADDRESS
     assert owner != ZERO_ADDRESS
-    assert self.idToOwner[tokenId].owner == owner
+    assert self.idToOwner[tokenId] == owner
 
     # Reset approvals, if any
     if self.idToApprovals[tokenId] != ZERO_ADDRESS:
@@ -239,7 +235,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
     self.nonces[tokenId] += 1
 
     # Change the owner
-    self.idToOwner[tokenId].owner = receiver
+    self.idToOwner[tokenId] = receiver
 
     # Change count tracking
     self.balanceOf[receiver] -= 1
@@ -306,7 +302,7 @@ def approve(operator: address, tokenId: uint256):
     @param tokenId ID of the token to be approved.
     """
     # Throws if `tokenId` is not a valid NFT
-    owner: address = self.idToOwner[tokenId].owner
+    owner: address = self.idToOwner[tokenId]
     assert owner != ZERO_ADDRESS
 
     # Throws if `operator` is the current owner
@@ -339,7 +335,7 @@ def permit(spender: address, tokenId: uint256, deadline: uint256, sig: Bytes[65]
     assert block.timestamp <= deadline
 
     # Ensure the token is owned by someone
-    owner: address = self.idToOwner[tokenId].owner
+    owner: address = self.idToOwner[tokenId]
     assert owner != ZERO_ADDRESS
 
     # Nonce for given token (signer must ensure they use latest)
@@ -405,32 +401,26 @@ def setApprovalForAll(operator: address, approved: bool):
     self.isApprovedForAll[msg.sender][operator] = approved
     log ApprovalForAll(msg.sender, operator, approved)
 
-
-#### PORTFOLIO MANAGEMENT FUNCTIONS ####
+@external
+def addMinter(minter: address):
+    assert msg.sender == self.owner
+    self.isMinter[msg.sender] = True
 
 @external
-def mint() -> uint256:
+def mint(receiver: address) -> uint256:
     """
     @dev Create a new Owner NFT
     @notice `tokenId` cannot be owned by someone because of hash production.
     @return uint256 Computed TokenID of new Portfolio.
     """
     # Create token
-    tokenId: uint256 = convert(
-        keccak256(
-            concat(
-                convert(msg.sender, bytes32),
-                convert(block.number, bytes32),
-            )
-        ),
-        uint256,
-    )
-
-    assert self.idToOwner[tokenId].owner == ZERO_ADDRESS  # Sanity check
-    self.idToOwner[tokenId] = Owner({
-        owner: msg.sender,
-        blockCreated: block.number,
-    })
-    self.balanceOf[msg.sender] += 1
-
+    assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
+    assert self.idToOwner[tokenId] == ZERO_ADDRESS  # Sanity check
+    
+    self.idToOwner[tokenId] = receiver
+    self.balanceOf[receiver] += 1
+    
+    owner: address = self.idToOwner[tokenId]
+    
+    log Transfer(ZERO_ADDRESS, receiver, tokenId)
     return tokenId
