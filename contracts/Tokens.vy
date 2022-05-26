@@ -14,21 +14,6 @@ SUPPORTED_INTERFACES: constant(bytes4[3]) = [
     0x5604e225,  # ERC165 interface ID of ERC4494
 ]
 
-interface ERC4494:
-
-	def permit(
-		spender: address,
-		tokenId: uint256,
-		deadline: uint256,
-		signature: Bytes[65]
-	): nonpayable
-
-	def nonces(
-		_tokenId: uint256
-	) -> uint256: view
-
-	def DOMAIN_SEPARATOR() -> bytes32: view
-
 ############ ERC-721 #############
 
 # Interface for the contract called by safeTransferFrom()
@@ -50,6 +35,37 @@ interface ERC721Metadata:
 	def tokenURI(
 		_tokenId: uint256
 	) -> String[128]: view
+
+interface ERC721Enumerable:
+
+	def totalSupply() -> uint256: view
+
+	def tokenByIndex(
+		_index: uint256
+	) -> uint256: view
+
+	def tokenOfOwnerByIndex(
+		_address: address,
+		_index: uint256
+	) -> uint256: view
+
+# Interface for ERC4494
+
+interface ERC4494:
+
+	def permit(
+		spender: address,
+		tokenId: uint256,
+		deadline: uint256,
+		signature: Bytes[65]
+	): nonpayable
+
+	def nonces(
+		_tokenId: uint256
+	) -> uint256: view
+
+	def DOMAIN_SEPARATOR() -> bytes32: view
+
 
 # @dev Emits when ownership of any NFT changes by any mechanism. This event emits when NFTs are
 #      created (`from` == 0) and destroyed (`to` == 0). Exception: during contract creation, any
