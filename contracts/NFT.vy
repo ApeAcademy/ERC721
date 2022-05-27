@@ -11,7 +11,12 @@ implements: ERC721
 SUPPORTED_INTERFACES: constant(bytes4[3]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
+{%- if cookiecutter.metadata == 'y' %} 
+    0x5b5e139f,  # ERC165 interface ID of ERC721 Metadata Extension
+{%- endif %}
+{%- if cookiecutter.permitable == 'y' %}
     0x5604e225,  # ERC165 interface ID of ERC4494
+{%- endif %}
 ]
 
 ############ ERC-721 #############
@@ -48,23 +53,6 @@ interface ERC721Enumerable:
 		_address: address,
 		_index: uint256
 	) -> uint256: view
-
-# Interface for ERC4494
-
-interface ERC4494:
-
-	def permit(
-		spender: address,
-		tokenId: uint256,
-		deadline: uint256,
-		signature: Bytes[65]
-	): nonpayable
-
-	def nonces(
-		_tokenId: uint256
-	) -> uint256: view
-
-	def DOMAIN_SEPARATOR() -> bytes32: view
 
 
 # @dev Emits when ownership of any NFT changes by any mechanism. This event emits when NFTs are
@@ -116,7 +104,7 @@ isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 # @dev Mapping from NFT ID to approved address.
 idToApprovals: public(HashMap[uint256, address])
 
-
+{%- if cookiecutter.permitable == 'y' %}
 ############ ERC-4494 ############
 
 # @dev Mapping of TokenID to nonce values used for ERC4494 signature verification
@@ -129,22 +117,35 @@ EIP712_DOMAIN_TYPEHASH: constant(bytes32) = keccak256(
 )
 EIP712_DOMAIN_NAMEHASH: constant(bytes32) = keccak256("Owner NFT")
 EIP712_DOMAIN_VERSIONHASH: constant(bytes32) = keccak256("1")
+{%- endif %}
+
 
 # ERC20 Token Metadata
-NAME: immutable(String[20])
-SYMBOL: immutable(String[5])
-TOKENURI: immutable(String[100])
+{%- if cookiecutter.metadata == 'y' %} 
+NAME: constant(String[20]) = "{{cookiecutter.token_name}}"
+SYMBOL: constant(String[5]) = "{{cookiecutter.token_symbol}}"
+IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
+
+    {%- if cookiecutter.updatable_uri == 'y' %} 
+baseURI: String[100]
+    {%- else%}
+BASE_URI: immutable(String[100])
+    {%- endif %}
+{%- endif %}
 
 @external
-def __init__(name: String[20], symbol: String[5], tokenURI: String[100]):
+def __init__(baseURI: String[100]):
     """
     @dev Contract constructor.
     """
+    #change URI would be owner only
 
-    NAME = name
-    SYMBOL = symbol
-    TOKENURI = tokenURI
-
+{%- if cookiecutter.updatable_uri == 'y' %} 
+    self.baseURI = baseURI
+{%- else%}
+    BASE_URI = baseURI
+{%- endif %}
+{%- if cookiecutter.permitable == 'y' %} 
     # ERC712 domain separator for ERC4494
     self.DOMAIN_SEPARATOR = keccak256(
         _abi_encode(
@@ -155,7 +156,8 @@ def __init__(name: String[20], symbol: String[5], tokenURI: String[100]):
             self,
         )
     )
-
+{%- endif %}
+{%- if cookiecutter.metadata == 'y' %} 
 # ERC721 Metadata Extension
 @pure
 @external
@@ -167,11 +169,45 @@ def name() -> String[40]:
 def symbol() -> String[5]:
     return SYMBOL
 
+pure
+@internal
+def _uint_to_string(_value: uint256) -> String[78]:
+    # NOTE: Odd that this works with a raw_call inside, despite being marked
+    # a pure function
+    if _value == 0:
+        return "0"
+
+    buffer: Bytes[78] = b""
+    digits: uint256 = 78
+
+    for i in range(78):
+        # go forward to find the # of digits, and set it
+        # only if we have found the last index
+        if digits == 78 and _value / 10 ** i == 0:
+            digits = i
+
+        value: uint256 = ((_value / 10 ** (77 - i)) % 10) + 48
+        char: Bytes[1] = slice(convert(value, bytes32), 31, 1)
+        buffer = raw_call(
+            IDENTITY_PRECOMPILE,
+            concat(buffer, char),
+            max_outsize=78,
+            is_static_call=True
+        )
+
+    return convert(slice(buffer, 78 - digits, digits), String[78])
+
 @pure
 @external
-def tokenURI() -> String[100]:
-    return TOKENURI
+def tokenURI(tokenId: uint256) -> String[179]:
+    {%- if cookiecutter.updatable_uri == 'y' %}
+    return concat(self.baseURI, "/" , self._uint_to_string(tokenId))
+    {%- else%}
+    return concat(BASE_URI, "/" , self._uint_to_string(tokenId))
+    {%- endif %}
 
+{%- endif %}
+{%- if cookiecutter.permitable == 'y' %} 
 @external
 def setDomainSeparator():
     """
@@ -186,7 +222,7 @@ def setDomainSeparator():
             self,
         )
     )
-
+{%- endif %}
 
 ############ ERC-165 #############
 
@@ -359,7 +395,7 @@ def approve(operator: address, tokenId: uint256):
     self.idToApprovals[tokenId] = operator
     log Approval(owner, operator, tokenId)
 
-
+{%- if cookiecutter.permitable == 'y' %} 
 @external
 def permit(spender: address, tokenId: uint256, deadline: uint256, sig: Bytes[65]) -> bool:
     """
@@ -433,6 +469,7 @@ def permit(spender: address, tokenId: uint256, deadline: uint256, sig: Bytes[65]
 
     return True
 
+{%- endif %}
 
 @external
 def setApprovalForAll(operator: address, approved: bool):
@@ -446,6 +483,7 @@ def setApprovalForAll(operator: address, approved: bool):
     self.isApprovedForAll[msg.sender][operator] = approved
     log ApprovalForAll(msg.sender, operator, approved)
 
+{%- if cookiecutter.mintable == 'y' %} 
 @external
 def addMinter(minter: address):
     assert msg.sender == self.owner
@@ -465,7 +503,6 @@ def mint(receiver: address, tokenId: uint256) -> uint256:
     self.idToOwner[tokenId] = receiver
     self.balanceOf[receiver] += 1
     
-    owner: address = self.idToOwner[tokenId]
-    
     log Transfer(ZERO_ADDRESS, receiver, tokenId)
     return tokenId
+{%- endif %}
