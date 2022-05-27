@@ -8,7 +8,7 @@ implements: ERC721
 
 ############ ERC-165 #############
 # @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[3]) = [
+SUPPORTED_INTERFACES: constant(bytes4[{{cookiecutter.number_of_interfaces}}]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
 {%- if cookiecutter.metadata == 'y' %} 
@@ -169,7 +169,6 @@ def name() -> String[40]:
 def symbol() -> String[5]:
     return SYMBOL
 
-pure
 @internal
 def _uint_to_string(_value: uint256) -> String[78]:
     """
@@ -201,7 +200,6 @@ def _uint_to_string(_value: uint256) -> String[78]:
 
     return convert(slice(buffer, 78 - digits, digits), String[78])
 
-@pure
 @external
 def tokenURI(tokenId: uint256) -> String[179]:
     {%- if cookiecutter.updatable_uri == 'y' %}
