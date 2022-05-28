@@ -8,7 +8,7 @@ implements: ERC721
 
 ############ ERC-165 #############
 # @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[{{cookiecutter.number_of_interfaces}}]) = [
+SUPPORTED_INTERFACES: constant(bytes4[{{cookiecutter.number_of_interfaces_rec_4}}]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
 {%- if cookiecutter.metadata == 'y' %} 
