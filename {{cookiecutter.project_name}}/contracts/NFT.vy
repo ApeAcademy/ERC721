@@ -489,7 +489,7 @@ def setApprovalForAll(operator: address, approved: bool):
 @external
 def addMinter(minter: address):
     assert msg.sender == self.owner
-    self.isMinter[msg.sender] = True
+    self.isMinter[minter] = True
 
 @external
 def mint(receiver: address, tokenId: uint256) -> uint256:
