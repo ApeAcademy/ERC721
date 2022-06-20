@@ -1,1 +1,2 @@
-name: erc721
+plugins:
+  - name: vyper
