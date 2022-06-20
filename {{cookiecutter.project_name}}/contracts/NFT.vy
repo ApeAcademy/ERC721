@@ -296,7 +296,7 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
 @internal
 def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: address):
     """
-    @dev Exeute transfer of a NFT.
+    @dev Execute transfer of a NFT.
          Throws unless `msg.sender` is the current owner, an authorized operator, or the approved
          address for this NFT. (NOTE: `msg.sender` not allowed in private function so pass `_sender`.)
          address for thisassert self.idToOwner[tokenId] == owner NFT. (NOTE: `msg.sender` not allowed in private function so pass `_sender`.)
@@ -321,7 +321,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
     self.idToOwner[tokenId] = receiver
 
     # Change count tracking
-    self.balanceOf[receiver] -= 1
+    self.balanceOf[owner] -= 1
     self.balanceOf[receiver] += 1
 
     # Log the transfer
