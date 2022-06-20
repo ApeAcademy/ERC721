@@ -1,10 +1,9 @@
 {
-    "project_name": "nftProject",
+    "project_name": "ape-nft-project",
     "token_name": "Ape NFT",
-    "token_symbol": "NFT",
+    "token_symbol": "APES",
     "updatable_uri": "y",
     "metadata": "y",
     "mintable": "y",
-    "permitable": "y",
-    "number_of_interfaces_rec_4": [1,2,3,4]
+    "permitable": "y"
 }
