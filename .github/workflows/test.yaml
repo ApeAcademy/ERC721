@@ -1,0 +1,29 @@
+on: ["push", "pull_request"]
+
+name: Test
+
+jobs:
+  validate-template:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        template:
+        - Basic
+        - Mintable
+    steps:
+    - uses: actions/checkout@v2
+    - uses: ApeWorX/github-action@v1
+    - run: ape plugins install -U template
+    - run: ape template . --replay-file tests/${{ matrix.template }}.json
+    - name: Install plugins
+      run: |
+        cd ${{ matrix.template }}
+        ape plugins install -U .
+    - name: Compile contracts
+      run: |
+        cd ${{ matrix.template }}
+        ape compile --size
+    - name: Run tests
+      run: |
+        cd ${{ matrix.template }}
+        ape test -s

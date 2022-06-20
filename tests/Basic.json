@@ -1,0 +1,11 @@
+{
+  "cookiecutter": {
+    "project_name": "Basic",
+    "token_name": "MyToken",
+    "token_symbol": "TEST",
+    "updatable_uri": "y",
+    "metadata": "y",
+    "mintable": "y",
+    "permitable": "y"
+  }
+}
