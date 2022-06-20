@@ -8,6 +8,8 @@ NOTE: Make sure to have the template plugin installed first
 
 ```sh
 $ ape template gh:ApeAcademy/ERC721
+$ cd <project-name>
+$ ape plugins install -U .
 $ ape test
 ```
 
