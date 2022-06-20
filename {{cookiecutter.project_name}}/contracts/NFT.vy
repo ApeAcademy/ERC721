@@ -8,10 +8,10 @@ implements: ERC721
 
 ############ ERC-165 #############
 # @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[{{cookiecutter.number_of_interfaces_rec_4}}]) = [
+SUPPORTED_INTERFACES: constant(bytes4[{{ 2 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) }}]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
-{%- if cookiecutter.metadata == 'y' %} 
+{%- if cookiecutter.metadata == 'y' %}
     0x5b5e139f,  # ERC165 interface ID of ERC721 Metadata Extension
 {%- endif %}
 {%- if cookiecutter.permitable == 'y' %}
@@ -121,12 +121,12 @@ EIP712_DOMAIN_VERSIONHASH: constant(bytes32) = keccak256("1")
 
 
 # ERC20 Token Metadata
-{%- if cookiecutter.metadata == 'y' %} 
+{%- if cookiecutter.metadata == 'y' %}
 NAME: constant(String[20]) = "{{cookiecutter.token_name}}"
 SYMBOL: constant(String[5]) = "{{cookiecutter.token_symbol}}"
 IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
 
-    {%- if cookiecutter.updatable_uri == 'y' %} 
+    {%- if cookiecutter.updatable_uri == 'y' %}
 baseURI: String[100]
     {%- else%}
 BASE_URI: immutable(String[100])
@@ -140,12 +140,12 @@ def __init__(baseURI: String[100]):
     """
     #change URI would be owner only
 
-{%- if cookiecutter.updatable_uri == 'y' %} 
+{%- if cookiecutter.updatable_uri == 'y' %}
     self.baseURI = baseURI
 {%- else%}
     BASE_URI = baseURI
 {%- endif %}
-{%- if cookiecutter.permitable == 'y' %} 
+{%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
     self.DOMAIN_SEPARATOR = keccak256(
         _abi_encode(
@@ -157,7 +157,7 @@ def __init__(baseURI: String[100]):
         )
     )
 {%- endif %}
-{%- if cookiecutter.metadata == 'y' %} 
+{%- if cookiecutter.metadata == 'y' %}
 # ERC721 Metadata Extension
 @pure
 @external
@@ -165,7 +165,7 @@ def name() -> String[40]:
     return NAME
 
 @pure
-@external 
+@external
 def symbol() -> String[5]:
     return SYMBOL
 
@@ -209,7 +209,7 @@ def tokenURI(tokenId: uint256) -> String[179]:
     {%- endif %}
 
 {%- endif %}
-{%- if cookiecutter.permitable == 'y' %} 
+{%- if cookiecutter.permitable == 'y' %}
 @external
 def setDomainSeparator():
     """
@@ -397,7 +397,7 @@ def approve(operator: address, tokenId: uint256):
     self.idToApprovals[tokenId] = operator
     log Approval(owner, operator, tokenId)
 
-{%- if cookiecutter.permitable == 'y' %} 
+{%- if cookiecutter.permitable == 'y' %}
 @external
 def permit(spender: address, tokenId: uint256, deadline: uint256, sig: Bytes[65]) -> bool:
     """
@@ -485,7 +485,7 @@ def setApprovalForAll(operator: address, approved: bool):
     self.isApprovedForAll[msg.sender][operator] = approved
     log ApprovalForAll(msg.sender, operator, approved)
 
-{%- if cookiecutter.mintable == 'y' %} 
+{%- if cookiecutter.mintable == 'y' %}
 @external
 def addMinter(minter: address):
     assert msg.sender == self.owner
@@ -501,10 +501,10 @@ def mint(receiver: address, tokenId: uint256) -> uint256:
 
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
     assert self.idToOwner[tokenId] == ZERO_ADDRESS  # Sanity check
-    
+
     self.idToOwner[tokenId] = receiver
     self.balanceOf[receiver] += 1
-    
+
     log Transfer(ZERO_ADDRESS, receiver, tokenId)
     return tokenId
 {%- endif %}
