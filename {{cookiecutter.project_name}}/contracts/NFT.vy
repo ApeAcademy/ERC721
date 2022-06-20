@@ -134,16 +134,18 @@ BASE_URI: immutable(String[100])
 {%- endif %}
 
 @external
-def __init__(baseURI: String[100]):
+def __init__({%- if cookiecutter.metadata == 'y' %}baseURI: String[100]{%- endif %}):
     """
     @dev Contract constructor.
     """
     #change URI would be owner only
 
-{%- if cookiecutter.updatable_uri == 'y' %}
+{%- if cookiecutter.metadata == 'y' %}
+    {%- if cookiecutter.updatable_uri == 'y' %}
     self.baseURI = baseURI
-{%- else%}
+    {%- else%}
     BASE_URI = baseURI
+    {%- endif %}
 {%- endif %}
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
@@ -314,8 +316,10 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
     if self.idToApprovals[tokenId] != ZERO_ADDRESS:
         self.idToApprovals[tokenId] = ZERO_ADDRESS
 
+{%- if cookiecutter.permitable == 'y' %}
     # EIP-4494: increment nonce on transfer for safety
     self.nonces[tokenId] += 1
+{%- endif %}
 
     # Change the owner
     self.idToOwner[tokenId] = receiver
