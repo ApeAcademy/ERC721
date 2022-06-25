@@ -138,10 +138,13 @@ def __init__({%- if cookiecutter.metadata == 'y' %}baseURI: String[100]{%- endif
     """
     @dev Contract constructor.
     """
-    #change URI would be owner only
-
+    
+{%- if cookiecutter.mintable == 'y' %}
+    self.owner = msg.sender
+{%- endif %}
 {%- if cookiecutter.metadata == 'y' %}
     {%- if cookiecutter.updatable_uri == 'y' %}
+    # change URI would be owner only
     self.baseURI = baseURI
     {%- else%}
     BASE_URI = baseURI
