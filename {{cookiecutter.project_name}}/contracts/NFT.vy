@@ -205,6 +205,7 @@ def _uint_to_string(_value: uint256) -> String[78]:
 
     return convert(slice(buffer, 78 - digits, digits), String[78])
 
+@view
 @external
 def tokenURI(tokenId: uint256) -> String[179]:
     {%- if cookiecutter.updatable_uri == 'y' %}
