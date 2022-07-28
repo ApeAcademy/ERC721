@@ -8,5 +8,6 @@
     "permitable": "y",
     "premint_amount": 10000,
     "minters": "y",
-    "clear_approval": "y"
+    "clear_approval": "y",
+    "set_token_uri": "n"
 }
