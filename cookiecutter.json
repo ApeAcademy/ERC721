@@ -5,5 +5,8 @@
     "updatable_uri": "y",
     "metadata": "y",
     "mintable": "y",
-    "permitable": "y"
+    "permitable": "y",
+    "premint_amount": 10000,
+    "minters": "y",
+    "clear_approval": "y"
 }
