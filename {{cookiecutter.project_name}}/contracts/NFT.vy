@@ -94,8 +94,11 @@ isMinter: public(HashMap[address, bool])
 
 totalSupply: public(uint256)
 
+{%- if cookiecutter.max_supply == 'y' %}
 # @dev Maximum supply of token
-MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply}}
+MAX_SUPPLY: public(uint256)
+{%- endif %}
+
 
 # @dev TokenID => owner
 idToOwner: public(HashMap[uint256, address])
@@ -147,14 +150,22 @@ def __init__({%- if cookiecutter.metadata == 'y' %}baseURI: String[100]{%- endif
 {%- if cookiecutter.mintable == 'y' %}
     self.owner = msg.sender
 {%- endif %}
+
 {%- if cookiecutter.metadata == 'y' %}
+
     {%- if cookiecutter.updatable_uri == 'y' %}
     # change URI would be owner only
     self.baseURI = baseURI
     {%- else%}
     BASE_URI = baseURI
     {%- endif %}
+
 {%- endif %}
+
+{%- if cookiecutter.max_supply == 'y' %}
+    self.MAX_SUPPLY = {{cookiecutter.max_supply_amount}}
+{%- endif %}
+
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
     self.DOMAIN_SEPARATOR = keccak256(
@@ -482,8 +493,9 @@ def mint(receiver: address, tokenId: uint256) -> uint256:
     @notice `tokenId` cannot be owned by someone because of hash production.
     @return uint256 Computed TokenID of new Portfolio.
     """
-    
-    assert MAX_SUPPLY > self.totalSupply()
+{%- if cookiecutter.max_supply == 'y' %}
+    assert self.MAX_SUPPLY > self.totalSupply
+{%- endif %}
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
     assert self.idToOwner[tokenId] == empty(address)  # Sanity check
 
