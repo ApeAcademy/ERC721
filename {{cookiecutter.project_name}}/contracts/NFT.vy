@@ -92,6 +92,8 @@ event ApprovalForAll:
 owner: public(address)
 isMinter: public(HashMap[address, bool])
 
+totalSupply: public(uint256)
+
 # @dev TokenID => owner
 idToOwner: public(HashMap[uint256, address])
 
@@ -485,5 +487,6 @@ def mint(receiver: address, tokenId: uint256) -> uint256:
     self.balanceOf[receiver] += 1
 
     log Transfer(empty(address), receiver, tokenId)
+    self.totalSupply += 1
     return tokenId
 {%- endif %}
