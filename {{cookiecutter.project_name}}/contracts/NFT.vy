@@ -94,6 +94,9 @@ isMinter: public(HashMap[address, bool])
 
 totalSupply: public(uint256)
 
+# @dev Maximum supply of token
+MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply}}
+
 # @dev TokenID => owner
 idToOwner: public(HashMap[uint256, address])
 
@@ -479,7 +482,8 @@ def mint(receiver: address, tokenId: uint256) -> uint256:
     @notice `tokenId` cannot be owned by someone because of hash production.
     @return uint256 Computed TokenID of new Portfolio.
     """
-
+    
+    assert MAX_SUPPLY > self.totalSupply()
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
     assert self.idToOwner[tokenId] == empty(address)  # Sanity check
 
@@ -488,5 +492,6 @@ def mint(receiver: address, tokenId: uint256) -> uint256:
 
     log Transfer(empty(address), receiver, tokenId)
     self.totalSupply += 1
+
     return tokenId
 {%- endif %}
