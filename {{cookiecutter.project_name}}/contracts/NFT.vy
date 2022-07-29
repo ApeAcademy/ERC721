@@ -225,7 +225,7 @@ def ownerOf(tokenId: uint256) -> address:
     """
     owner: address = self.idToOwner[tokenId]
     # Throws if `tokenId` is not a valid NFT
-    assert owner != ZERO_ADDRESS
+    assert owner != empty(address)
     return owner
 
 
@@ -238,7 +238,7 @@ def getApproved(tokenId: uint256) -> address:
     @param tokenId ID of the NFT to query the approval of.
     """
     # Throws if `tokenId` is not a valid NFT
-    assert self.idToOwner[tokenId] != ZERO_ADDRESS
+    assert self.idToOwner[tokenId] != empty(address)
     return self.idToApprovals[tokenId]
 
 
@@ -281,13 +281,13 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
     """
     # Check requirements
     assert self._isApprovedOrOwner(sender, tokenId)
-    assert receiver != ZERO_ADDRESS
-    assert owner != ZERO_ADDRESS
+    assert receiver != empty(address)
+    assert owner != empty(address)
     assert self.idToOwner[tokenId] == owner
 
     # Reset approvals, if any
-    if self.idToApprovals[tokenId] != ZERO_ADDRESS:
-        self.idToApprovals[tokenId] = ZERO_ADDRESS
+    if self.idToApprovals[tokenId] != empty(address):
+        self.idToApprovals[tokenId] = empty(address)
 
 {%- if cookiecutter.permitable == 'y' %}
     # EIP-4494: increment nonce on transfer for safety
@@ -363,7 +363,7 @@ def approve(operator: address, tokenId: uint256):
     """
     # Throws if `tokenId` is not a valid NFT
     owner: address = self.idToOwner[tokenId]
-    assert owner != ZERO_ADDRESS
+    assert owner != empty(address)
 
     # Throws if `operator` is the current owner
     assert operator != owner
@@ -396,7 +396,7 @@ def permit(spender: address, tokenId: uint256, deadline: uint256, sig: Bytes[65]
 
     # Ensure the token is owned by someone
     owner: address = self.idToOwner[tokenId]
-    assert owner != ZERO_ADDRESS
+    assert owner != empty(address)
 
     # Nonce for given token (signer must ensure they use latest)
     nonce: uint256 = self.nonces[tokenId]
@@ -468,6 +468,8 @@ def addMinter(minter: address):
     assert msg.sender == self.owner
     self.isMinter[minter] = True
 
+
+
 @external
 def mint(receiver: address, tokenId: uint256) -> uint256:
     """
@@ -477,11 +479,11 @@ def mint(receiver: address, tokenId: uint256) -> uint256:
     """
 
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
-    assert self.idToOwner[tokenId] == ZERO_ADDRESS  # Sanity check
+    assert self.idToOwner[tokenId] == empty(address)  # Sanity check
 
     self.idToOwner[tokenId] = receiver
     self.balanceOf[receiver] += 1
 
-    log Transfer(ZERO_ADDRESS, receiver, tokenId)
+    log Transfer(empty(address), receiver, tokenId)
     return tokenId
 {%- endif %}
