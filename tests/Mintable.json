@@ -6,6 +6,9 @@
     "updatable_uri": "n",
     "metadata": "n",
     "mintable": "y",
-    "permitable": "n"
+    "max_supply": "y",
+    "max_supply_amount": 3,
+    "permitable": "y"
+    
   }
 }
