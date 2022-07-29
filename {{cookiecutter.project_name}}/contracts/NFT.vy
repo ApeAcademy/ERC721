@@ -1,7 +1,8 @@
-# @version 0.3.3
+# @version 0.3.4
 
 from vyper.interfaces import ERC165
 from vyper.interfaces import ERC721
+
 
 implements: ERC165
 implements: ERC721
@@ -28,7 +29,7 @@ interface ERC721Receiver:
             owner: address,
             tokenId: uint256,
             data: Bytes[1024]
-        ) -> bytes32: view
+        ) -> bytes4: view
 
 # Interface for ERC721Metadata
 
@@ -89,11 +90,30 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
+tokenName: immutable(String[64])
+tokenSymbol: immutable(String[32])
+baseTokenURI: immutable(String[64])
+prerevealBaseUri: immutable(String[64])
+
+# @dev current number of tokens
+totalSupply: uint256
+
+# @dev Maximum supply of token
+MAX_SUPPLY: constant(uint256) = {{cookiecutter.premint_amount}}
+
+# @dev creator of contract
 owner: public(address)
+
+{%- if cookiecutter.minters == 'y' %}
+# @dev a hashmap of operators
 isMinter: public(HashMap[address, bool])
+{%- endif %}
 
 # @dev TokenID => owner
 idToOwner: public(HashMap[uint256, address])
+
+# @dev Mapping from NFT ID to approved address.
+idToApprovals: public(HashMap[uint256, address])
 
 # @dev Mapping from owner address to count of their tokens.
 balanceOf: public(HashMap[address, uint256])
@@ -101,8 +121,7 @@ balanceOf: public(HashMap[address, uint256])
 # @dev Mapping from owner address to mapping of operator addresses.
 isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 
-# @dev Mapping from NFT ID to approved address.
-idToApprovals: public(HashMap[uint256, address])
+idToURI: public(HashMap[uint256, String[64]])
 
 {%- if cookiecutter.permitable == 'y' %}
 ############ ERC-4494 ############
@@ -121,35 +140,25 @@ EIP712_DOMAIN_VERSIONHASH: constant(bytes32) = keccak256("1")
 
 
 # ERC20 Token Metadata
-{%- if cookiecutter.metadata == 'y' %}
-NAME: constant(String[20]) = "{{cookiecutter.token_name}}"
-SYMBOL: constant(String[5]) = "{{cookiecutter.token_symbol}}"
 IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
 
-    {%- if cookiecutter.updatable_uri == 'y' %}
-baseURI: String[100]
-    {%- else%}
-BASE_URI: immutable(String[100])
-    {%- endif %}
-{%- endif %}
-
 @external
-def __init__({%- if cookiecutter.metadata == 'y' %}baseURI: String[100]{%- endif %}):
+def __init__():
+    
     """
     @dev Contract constructor.
     """
-    
-{%- if cookiecutter.mintable == 'y' %}
     self.owner = msg.sender
+    tokenName = "{{cookiecutter.token_name}}"
+    tokenSymbol = "{{cookiecutter.token_symbol}}"
+{%- if cookiecutter.updatable_uri == 'y' %}
+    baseTokenURI = ""
+{%- else%}
+    baseTokenURI = "{{cookiecutter.baseTokenURI}}"
 {%- endif %}
-{%- if cookiecutter.metadata == 'y' %}
-    {%- if cookiecutter.updatable_uri == 'y' %}
-    # change URI would be owner only
-    self.baseURI = baseURI
-    {%- else%}
-    BASE_URI = baseURI
-    {%- endif %}
-{%- endif %}
+    prerevealBaseUri = "{{cookiecutter.prereveal_base_uri}}"
+
+
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
     self.DOMAIN_SEPARATOR = keccak256(
@@ -162,59 +171,52 @@ def __init__({%- if cookiecutter.metadata == 'y' %}baseURI: String[100]{%- endif
         )
     )
 {%- endif %}
+
 {%- if cookiecutter.metadata == 'y' %}
 # ERC721 Metadata Extension
 @pure
 @external
-def name() -> String[40]:
-    return NAME
+def name() -> String[64]:
+    return tokenName
 
 @pure
 @external
-def symbol() -> String[5]:
-    return SYMBOL
+def symbol() -> String[32]:
+    return tokenSymbol
 
+@view
+@external
+def baseURI() -> String[64]:
+    return baseTokenURI
+    
+{%- endif %}
+
+{%- if cookiecutter.updatable_uri == 'y' %}
 @internal
-def _uint_to_string(_value: uint256) -> String[78]:
+def _setTokenURI(tokenId: uint256, tokenURI: String[64]):
     """
-    @dev skelletOr
-    reference: https://github.com/curvefi/curve-veBoost/blob/0e51be10638df2479d9e341c07fafa940ef58596/contracts/VotingEscrowDelegation.vy#L423
+    @dev Set the URI for a token
+         Throws if the token ID does not exist
     """
-    # NOTE: Odd that this works with a raw_call inside, despite being marked
-    # a pure function
-    if _value == 0:
-        return "0"
+    assert self.idToOwner[tokenId] != empty(address)
+    self.idToURI[tokenId] = tokenURI
+{%- endif %}
 
-    buffer: Bytes[78] = b""
-    digits: uint256 = 78
-
-    for i in range(78):
-        # go forward to find the # of digits, and set it
-        # only if we have found the last index
-        if digits == 78 and _value / 10 ** i == 0:
-            digits = i
-
-        value: uint256 = ((_value / 10 ** (77 - i)) % 10) + 48
-        char: Bytes[1] = slice(convert(value, bytes32), 31, 1)
-        buffer = raw_call(
-            IDENTITY_PRECOMPILE,
-            concat(buffer, char),
-            max_outsize=78,
-            is_static_call=True
-        )
-
-    return convert(slice(buffer, 78 - digits, digits), String[78])
 
 @view
 @external
 def tokenURI(tokenId: uint256) -> String[179]:
-    {%- if cookiecutter.updatable_uri == 'y' %}
-    return concat(self.baseURI, "/" , self._uint_to_string(tokenId))
+{%- if cookiecutter.updatable_uri == 'y' %}
+    if len(baseTokenURI) == 0:
+        return prerevealBaseUri
+    else:
+        return concat(baseTokenURI, "/" , uint2str(tokenId))
     {%- else%}
-    return concat(BASE_URI, "/" , self._uint_to_string(tokenId))
-    {%- endif %}
+    return concat(baseTokenURI, "/" , uint2str(tokenId))
+    
 
 {%- endif %}
+
 {%- if cookiecutter.permitable == 'y' %}
 @external
 def setDomainSeparator():
@@ -256,7 +258,7 @@ def ownerOf(tokenId: uint256) -> address:
     """
     owner: address = self.idToOwner[tokenId]
     # Throws if `tokenId` is not a valid NFT
-    assert owner != ZERO_ADDRESS
+    assert owner != empty(address)
     return owner
 
 
@@ -269,9 +271,63 @@ def getApproved(tokenId: uint256) -> address:
     @param tokenId ID of the NFT to query the approval of.
     """
     # Throws if `tokenId` is not a valid NFT
-    assert self.idToOwner[tokenId] != ZERO_ADDRESS
+    assert self.idToOwner[tokenId] != empty(address)
     return self.idToApprovals[tokenId]
 
+@view
+@external
+def tokenByIndex(index: uint256) -> uint256:
+    """
+    @dev Get token by index
+         Throws if 'index' is larger than totalSupply()
+    """
+    # NOTE: This is more gas-heavy than maintaining the properties in storage.
+    #       However, we almost always reference this value off-chain,
+    #       so the cost doesn't matter.
+    assert index <= self.totalSupply  # NOTE: This prevents indexing un-minted tokens
+    assert index > 0
+
+    burnt_offset: uint256 = 0
+    for raw_idx in range(MAX_SUPPLY):
+        # Iterated over all possible mintable tokens (may not be minted yet)
+        if self.idToOwner[raw_idx] == empty(address):
+            # This token has been burnt or not minted yet
+            burnt_offset += 1
+        
+        if raw_idx - burnt_offset == index:
+            return raw_idx
+    return index + burnt_offset
+    #raise UNREACHABLE  # Shouldn't ever reach this (see NOTE above)
+
+
+@view
+@external
+def tokenOfOwnerByIndex(owner: address, index: uint256) -> uint256:
+    """
+    @dev Get token by index
+         Throws if 'index' is larger than balance of 'owner'
+         Throws if value has been set to 0
+    """
+    # NOTE: This is more gas-heavy than maintaining the properties in storage.
+    #       However, we almost always reference this value off-chain,
+    #       so the cost doesn't matter.
+    # NOTE: invariant `balanceOf(owner) <= totalSupply`
+    assert index <= self.balanceOf[owner]  # NOTE: This prevents indexing un-minted tokens
+    assert index > 0
+
+    owner_offset: uint256 = 0
+    for raw_idx in range(MAX_SUPPLY):
+        # Iterated over all possible mintable tokens (may not be minted yet)
+        if self.idToOwner[raw_idx] != owner:
+            # This token is not owned by `owner`
+            # NOTE: This also avoids burnt tokens as well as ones that are not minted yet
+            owner_offset += 1
+        
+        if raw_idx - owner_offset == index:
+            return raw_idx
+    return index + owner_offset
+
+    #raise UNREACHABLE  # Shouldn't ever reach this (see NOTE above)
 
 ### TRANSFER FUNCTION HELPERS ###
 
@@ -298,7 +354,6 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
 
     return False
 
-
 @internal
 def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: address):
     """
@@ -312,18 +367,16 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
     """
     # Check requirements
     assert self._isApprovedOrOwner(sender, tokenId)
-    assert receiver != ZERO_ADDRESS
-    assert owner != ZERO_ADDRESS
+    assert receiver != empty(address)
+    assert owner != empty(address)
     assert self.idToOwner[tokenId] == owner
 
     # Reset approvals, if any
-    if self.idToApprovals[tokenId] != ZERO_ADDRESS:
-        self.idToApprovals[tokenId] = ZERO_ADDRESS
+    if self.idToApprovals[tokenId] != empty(address):
+        self.idToApprovals[tokenId] = empty(address)
 
-{%- if cookiecutter.permitable == 'y' %}
     # EIP-4494: increment nonce on transfer for safety
     self.nonces[tokenId] += 1
-{%- endif %}
 
     # Change the owner
     self.idToOwner[tokenId] = receiver
@@ -377,9 +430,9 @@ def safeTransferFrom(
     """
     self._transferFrom(owner, receiver, tokenId, msg.sender)
     if receiver.is_contract: # check if `receiver` is a contract address
-        returnValue: bytes32 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
+        returnValue: bytes4 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
         # Throws if transfer destination is a contract which does not implement 'onERC721Received'
-        assert returnValue == method_id("onERC721Received(address,address,uint256,bytes)", output_type=bytes32)
+        assert returnValue == method_id("onERC721Received(address,address,uint256,bytes)", output_type=bytes4)
 
 
 @external
@@ -394,7 +447,7 @@ def approve(operator: address, tokenId: uint256):
     """
     # Throws if `tokenId` is not a valid NFT
     owner: address = self.idToOwner[tokenId]
-    assert owner != ZERO_ADDRESS
+    assert owner != empty(address)
 
     # Throws if `operator` is the current owner
     assert operator != owner
@@ -404,6 +457,20 @@ def approve(operator: address, tokenId: uint256):
 
     self.idToApprovals[tokenId] = operator
     log Approval(owner, operator, tokenId)
+
+{%- if cookiecutter.clear_approval == 'y' %}
+@internal
+def _clearApproval(owner: address, tokenId: uint256):
+    """
+    @dev Clear an approval of a given address
+         Throws if `owner` is not the current owner.
+    """
+    # Throws if `owner` is not the current owner
+    assert self.idToOwner[tokenId] == owner
+    if self.idToApprovals[tokenId] != empty(address):
+        # Reset approvals
+        self.idToApprovals[tokenId] = empty(address)
+{%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
 @external
@@ -427,7 +494,7 @@ def permit(spender: address, tokenId: uint256, deadline: uint256, sig: Bytes[65]
 
     # Ensure the token is owned by someone
     owner: address = self.idToOwner[tokenId]
-    assert owner != ZERO_ADDRESS
+    assert owner != empty(address)
 
     # Nonce for given token (signer must ensure they use latest)
     nonce: uint256 = self.nonces[tokenId]
@@ -493,12 +560,14 @@ def setApprovalForAll(operator: address, approved: bool):
     self.isApprovedForAll[msg.sender][operator] = approved
     log ApprovalForAll(msg.sender, operator, approved)
 
-{%- if cookiecutter.mintable == 'y' %}
+{%- if cookiecutter.minters  == 'y' %}
 @external
 def addMinter(minter: address):
     assert msg.sender == self.owner
     self.isMinter[minter] = True
+{%- endif %}
 
+{%- if cookiecutter.mintable == 'y' %}
 @external
 def mint(receiver: address, tokenId: uint256) -> uint256:
     """
@@ -507,12 +576,14 @@ def mint(receiver: address, tokenId: uint256) -> uint256:
     @return uint256 Computed TokenID of new Portfolio.
     """
 
+{%- if (cookiecutter.minters == 'y') and (cookiecutter.mintable == 'y') %}
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
-    assert self.idToOwner[tokenId] == ZERO_ADDRESS  # Sanity check
+{%- endif %}
+    assert self.idToOwner[tokenId] == empty(address)  # Sanity check
 
     self.idToOwner[tokenId] = receiver
     self.balanceOf[receiver] += 1
 
-    log Transfer(ZERO_ADDRESS, receiver, tokenId)
+    log Transfer(empty(address), receiver, tokenId)
     return tokenId
 {%- endif %}
