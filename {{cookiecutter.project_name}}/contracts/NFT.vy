@@ -1,4 +1,4 @@
-# @version 0.3.3
+# @version 0.3.4
 
 from vyper.interfaces import ERC165
 from vyper.interfaces import ERC721
@@ -28,7 +28,7 @@ interface ERC721Receiver:
             owner: address,
             tokenId: uint256,
             data: Bytes[1024]
-        ) -> bytes32: view
+        ) -> bytes4: view
 
 # Interface for ERC721Metadata
 
@@ -174,44 +174,13 @@ def name() -> String[40]:
 def symbol() -> String[5]:
     return SYMBOL
 
-@internal
-def _uint_to_string(_value: uint256) -> String[78]:
-    """
-    @dev skelletOr
-    reference: https://github.com/curvefi/curve-veBoost/blob/0e51be10638df2479d9e341c07fafa940ef58596/contracts/VotingEscrowDelegation.vy#L423
-    """
-    # NOTE: Odd that this works with a raw_call inside, despite being marked
-    # a pure function
-    if _value == 0:
-        return "0"
-
-    buffer: Bytes[78] = b""
-    digits: uint256 = 78
-
-    for i in range(78):
-        # go forward to find the # of digits, and set it
-        # only if we have found the last index
-        if digits == 78 and _value / 10 ** i == 0:
-            digits = i
-
-        value: uint256 = ((_value / 10 ** (77 - i)) % 10) + 48
-        char: Bytes[1] = slice(convert(value, bytes32), 31, 1)
-        buffer = raw_call(
-            IDENTITY_PRECOMPILE,
-            concat(buffer, char),
-            max_outsize=78,
-            is_static_call=True
-        )
-
-    return convert(slice(buffer, 78 - digits, digits), String[78])
-
 @view
 @external
 def tokenURI(tokenId: uint256) -> String[179]:
     {%- if cookiecutter.updatable_uri == 'y' %}
-    return concat(self.baseURI, "/" , self._uint_to_string(tokenId))
+    return concat(self.baseURI, "/" , uint2str(tokenId))
     {%- else%}
-    return concat(BASE_URI, "/" , self._uint_to_string(tokenId))
+    return concat(BASE_URI, "/" , uint2str(tokenId))
     {%- endif %}
 
 {%- endif %}
@@ -377,9 +346,9 @@ def safeTransferFrom(
     """
     self._transferFrom(owner, receiver, tokenId, msg.sender)
     if receiver.is_contract: # check if `receiver` is a contract address
-        returnValue: bytes32 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
+        returnValue: bytes4 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
         # Throws if transfer destination is a contract which does not implement 'onERC721Received'
-        assert returnValue == method_id("onERC721Received(address,address,uint256,bytes)", output_type=bytes32)
+        assert returnValue == method_id("onERC721Received(address,address,uint256,bytes)", output_type=bytes4)
 
 
 @external
