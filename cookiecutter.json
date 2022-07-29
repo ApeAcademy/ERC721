@@ -3,11 +3,13 @@
     "token_name": "Ape NFT",
     "token_symbol": "APES",
     "updatable_uri": "y",
+    "set_token_uri": "n",
+    "baseTokenURI": "BASE_URI_HERE", 
+    "prereveal_base_uri": "prereveal_base_uri_here",
     "metadata": "y",
     "mintable": "y",
     "permitable": "y",
     "premint_amount": 10000,
     "minters": "y",
-    "clear_approval": "y",
-    "set_token_uri": "n"
+    "clear_approval": "y"
 }
