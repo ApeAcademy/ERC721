@@ -27,6 +27,14 @@ def test_init(nft, owner):
     with ape.reverts():
         assert nft.ownerOf(0)
 
+def test_mint(nft, owner, receiver):
+    assert nft.balanceOf(owner) == 0
+    assert nft.balanceOf(receiver) == 0
+    nft.mint(receiver,sender=owner)
+    assert nft.balanceOf(owner) == 0
+    assert nft.balanceOf(receiver) == 1
+    assert nft.ownerOf(1) == receiver.address
+
 def test_total_supply(nft, owner):
     assert nft.totalSupply() == 0
     nft.mint(owner, sender=owner)
