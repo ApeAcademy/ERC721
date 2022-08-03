@@ -487,23 +487,25 @@ def addMinter(minter: address):
 
 
 @external
-def mint(receiver: address, tokenId: uint256) -> uint256:
+def mint(receiver: address) -> uint256:
     """
     @dev Create a new Owner NFT
     @notice `tokenId` cannot be owned by someone because of hash production.
     @return uint256 Computed TokenID of new Portfolio.
     """
 {%- if cookiecutter.max_supply == 'y' %}
-    assert self.MAX_SUPPLY > self.totalSupply
-{%- endif %}
-    assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
-    assert self.idToOwner[tokenId] == empty(address)  # Sanity check
+    assert self.MAX_SUPPLY >= self.totalSupply
+{%- endif %} 
 
-    self.idToOwner[tokenId] = receiver
+    assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
+
+    self.totalSupply += 1
+    assert self.idToOwner[self.totalSupply] == empty(address)  # Sanity check
+    
+    self.idToOwner[self.totalSupply] = receiver
     self.balanceOf[receiver] += 1
 
-    log Transfer(empty(address), receiver, tokenId)
-    self.totalSupply += 1
+    log Transfer(empty(address), receiver, self.totalSupply)
 
-    return tokenId
+    return self.totalSupply
 {%- endif %}
