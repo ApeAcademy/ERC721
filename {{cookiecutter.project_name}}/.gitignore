@@ -1,4 +1,5 @@
 .build/
+ape-nft-project/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
