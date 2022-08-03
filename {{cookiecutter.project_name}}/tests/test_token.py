@@ -29,5 +29,5 @@ def test_init(nft, owner):
 
 def test_total_supply(nft, owner):
     assert nft.totalSupply() == 0
-    nft.mint(owner, 0, sender=owner)
+    nft.mint(owner, sender=owner)
     assert nft.totalSupply() == 1
