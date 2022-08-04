@@ -39,3 +39,36 @@ def test_total_supply(nft, owner):
     assert nft.totalSupply() == 0
     nft.mint(owner, sender=owner)
     assert nft.totalSupply() == 1
+
+def test_transfer(nft, owner, receiver):
+    assert nft.balanceOf(owner) == 0
+    assert nft.balanceOf(receiver) == 0
+    nft.mint(owner, sender=owner)
+    assert nft.balanceOf(owner) == 1
+    assert nft.ownerOf(1) == owner.address
+    nft.transferFrom(owner, receiver, 1, sender=owner)
+    assert nft.balanceOf(owner) == 0
+    assert nft.balanceOf(receiver) == 1
+    assert nft.ownerOf(1) == receiver.address
+    nft.transferFrom(receiver, owner, 1, sender=receiver)
+    assert nft.balanceOf(receiver) == 0
+    assert nft.balanceOf(owner) == 1
+    assert nft.ownerOf(1) == owner.address
+
+def test_incorrect_signer_transfer(nft, owner, receiver):
+    assert nft.balanceOf(owner) == 0
+    assert nft.balanceOf(receiver) == 0
+    nft.mint(owner, sender=owner)
+    with ape.reverts():
+        nft.transferFrom(owner,receiver,1,sender=receiver)    
+    assert nft.balanceOf(receiver) == 0
+    assert nft.balanceOf(owner) == 1
+    assert nft.ownerOf(1) == owner.address
+
+def test_incorrect_signer_minter(nft, owner, receiver):
+    assert nft.balanceOf(owner) == 0
+    assert nft.balanceOf(receiver) == 0
+    with ape.reverts():
+        nft.mint(owner, sender=receiver)
+    assert nft.balanceOf(owner) == 0
+    assert nft.balanceOf(receiver) == 0
