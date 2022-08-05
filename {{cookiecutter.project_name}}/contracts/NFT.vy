@@ -135,7 +135,7 @@ SYMBOL: constant(String[5]) = "{{cookiecutter.token_symbol}}"
 IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
 
     {%- if cookiecutter.updatable_uri == 'y' %}
-baseURI: String[100]
+baseURI: public(String[100])
     {%- else%}
 BASE_URI: immutable(String[100])
     {%- endif %}
