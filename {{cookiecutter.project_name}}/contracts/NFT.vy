@@ -94,12 +94,6 @@ isMinter: public(HashMap[address, bool])
 
 totalSupply: public(uint256)
 
-{%- if cookiecutter.max_supply == 'y' %}
-# @dev Maximum supply of token
-MAX_SUPPLY: public(uint256)
-{%- endif %}
-
-
 # @dev TokenID => owner
 idToOwner: public(HashMap[uint256, address])
 
@@ -133,16 +127,23 @@ EIP712_DOMAIN_VERSIONHASH: constant(bytes32) = keccak256("1")
 NAME: constant(String[20]) = "{{cookiecutter.token_name}}"
 SYMBOL: constant(String[5]) = "{{cookiecutter.token_symbol}}"
 IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
-
-    {%- if cookiecutter.updatable_uri == 'y' %}
+{%- if cookiecutter.updatable_uri == 'y' %}
 baseURI: public(String[100])
-    {%- else%}
-BASE_URI: immutable(String[100])
+
+    {%- else %}
+BASE_URI: constant(String[100]) = "dummy uri"
     {%- endif %}
+
+{%- endif %}
+
+{%- if cookiecutter.max_supply == 'y' %}
+# @dev Maximum supply of token
+MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
+
 {%- endif %}
 
 @external
-def __init__({%- if cookiecutter.metadata == 'y' %}baseURI: String[100]{%- endif %}):
+def __init__():
     """
     @dev Contract constructor.
     """
@@ -151,20 +152,10 @@ def __init__({%- if cookiecutter.metadata == 'y' %}baseURI: String[100]{%- endif
     self.owner = msg.sender
 {%- endif %}
 
-{%- if cookiecutter.metadata == 'y' %}
-
-    {%- if cookiecutter.updatable_uri == 'y' %}
-    # change URI would be owner only
-    self.baseURI = baseURI
-    {%- else%}
-    BASE_URI = baseURI
-    {%- endif %}
-
+{%- if cookiecutter.updatable_uri == 'y' %}
+    self.baseURI = "dummy uri"
 {%- endif %}
 
-{%- if cookiecutter.max_supply == 'y' %}
-    self.MAX_SUPPLY = {{cookiecutter.max_supply_amount}}
-{%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
@@ -190,6 +181,14 @@ def name() -> String[40]:
 def symbol() -> String[5]:
     return SYMBOL
 
+{%- if cookiecutter.updatable_uri == 'n' %}
+@view
+@external
+def baseURI() -> String[100]:
+    return BASE_URI
+    
+{%- endif %}
+
 @view
 @external
 def tokenURI(tokenId: uint256) -> String[179]:
@@ -200,6 +199,18 @@ def tokenURI(tokenId: uint256) -> String[179]:
     {%- endif %}
 
 {%- endif %}
+
+{%- if cookiecutter.updatable_uri == 'y' %}
+
+@external
+def setBaseURI(_baseURI: String[100]):
+    assert msg.sender == self.owner
+    self.baseURI = _baseURI
+
+{%- endif %}
+
+
+
 {%- if cookiecutter.permitable == 'y' %}
 @external
 def setDomainSeparator():
@@ -494,7 +505,7 @@ def mint(receiver: address) -> uint256:
     @return uint256 Computed TokenID of new Portfolio.
     """
 {%- if cookiecutter.max_supply == 'y' %}
-    assert self.MAX_SUPPLY >= self.totalSupply
+    assert MAX_SUPPLY >= self.totalSupply
 {%- endif %} 
 
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
