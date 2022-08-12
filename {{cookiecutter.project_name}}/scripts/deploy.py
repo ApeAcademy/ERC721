@@ -11,9 +11,9 @@ def main():
     account.deploy(project.NFT)
 
 
-#perk you can add args unlike main method
+# perk you can add args unlike main method
 @click.command(cls=NetworkBoundCommand)
-@click.option("--uri", help = "base uri for nft", default = "dummy value")
+@click.option("--uri", help="base uri for nft", default="dummy value")
 @ape_cli_context()
 @network_option()
 # cli_ctx must go first
@@ -26,5 +26,5 @@ def cli(cli_ctx, network, uri):
         account = cli_ctx.account_manager.test_accounts[0]
     else:
         account = get_user_selected_account()
-    
+
     account.deploy(project.NFT, uri)

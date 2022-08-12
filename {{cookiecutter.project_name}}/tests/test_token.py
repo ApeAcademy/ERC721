@@ -69,7 +69,7 @@ def test_incorrect_signer_transfer(nft, owner, receiver):
     assert nft.balanceOf(receiver) == 0
     nft.mint(owner, sender=owner)
     with ape.reverts():
-        nft.transferFrom(owner,receiver,1,sender=receiver)    
+        nft.transferFrom(owner,receiver,1,sender=receiver)
     assert nft.balanceOf(receiver) == 0
     assert nft.balanceOf(owner) == 1
     assert nft.ownerOf(1) == owner.address
@@ -80,6 +80,7 @@ def test_incorrect_signer_minter(nft, owner, receiver):
     assert nft.balanceOf(receiver) == 0
     with ape.reverts():
         nft.mint(owner, sender=receiver)
+    assert nft.isMinter(receiver) == False
     assert nft.balanceOf(owner) == 0
     assert nft.balanceOf(receiver) == 0
 
@@ -91,12 +92,14 @@ def test_approve_transfer(nft, owner, receiver):
     assert nft.balanceOf(receiver) == 0
     assert nft.balanceOf(owner) == 1
     assert nft.ownerOf(1) == owner.address
+
     with ape.reverts():
         nft.approve(receiver, 1, sender=receiver)
         nft.transferFrom(owner, receiver, 1, sender=receiver)
     assert nft.balanceOf(receiver) == 0
     assert nft.balanceOf(owner) == 1
     assert nft.ownerOf(1) == owner.address
+
     nft.approve(receiver, 1, sender=owner)
     assert nft.getApproved(1) == receiver
     nft.transferFrom(owner, receiver, 1, sender=receiver)
@@ -104,3 +107,18 @@ def test_approve_transfer(nft, owner, receiver):
     assert nft.balanceOf(owner) == 0
     assert nft.ownerOf(1) == receiver.address
 
+
+def test_uri(nft, owner):
+    {%- if cookiecutter.updatable_uri == 'y' %}
+    assert nft.baseURI() == "dummy uri"
+    nft.mint(owner, sender=owner)
+
+
+    nft.setBaseURI("new base uri", sender=owner)
+    assert nft.baseURI() == "new base uri"
+    assert nft.tokenURI(1) == "new base uri/1"
+
+    {%- else%}
+    nft.mint(owner, sender=owner)
+    assert nft.tokenURI(1) == "dummy uri/1"
+    {%- endif %}
