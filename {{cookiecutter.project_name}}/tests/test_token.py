@@ -119,7 +119,7 @@ def test_uri(nft, owner):
     assert nft.tokenURI(1) == "new base uri/1"
     
     {%- else%}
-    assert nft.baseURI() == "dummy uri"
+    assert nft.BASE_URI() == "dummy uri"
     nft.mint(owner, sender=owner)
-    assert nft.tokenURI(1) == nft.baseURI() + "/1"
+    assert nft.tokenURI(1) == nft.BASE_URI() + "/1"
     {%- endif %}
