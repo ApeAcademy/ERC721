@@ -126,7 +126,6 @@ EIP712_DOMAIN_VERSIONHASH: constant(bytes32) = keccak256("1")
 {%- if cookiecutter.metadata == 'y' %}
 NAME: constant(String[20]) = "{{cookiecutter.token_name}}"
 SYMBOL: constant(String[5]) = "{{cookiecutter.token_symbol}}"
-IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
 {%- endif %}
 
 {%- if cookiecutter.updatable_uri == 'y' %}
