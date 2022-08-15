@@ -127,14 +127,16 @@ EIP712_DOMAIN_VERSIONHASH: constant(bytes32) = keccak256("1")
 NAME: constant(String[20]) = "{{cookiecutter.token_name}}"
 SYMBOL: constant(String[5]) = "{{cookiecutter.token_symbol}}"
 IDENTITY_PRECOMPILE: constant(address) = 0x0000000000000000000000000000000000000004
+{%- endif %}
+
 {%- if cookiecutter.updatable_uri == 'y' %}
 baseURI: public(String[100])
 
-    {%- else %}
+{%- else %}
 BASE_URI: constant(String[100]) = "dummy uri"
-    {%- endif %}
-
 {%- endif %}
+
+
 
 {%- if cookiecutter.max_supply == 'y' %}
 # @dev Maximum supply of token
@@ -169,6 +171,7 @@ def __init__():
         )
     )
 {%- endif %}
+
 {%- if cookiecutter.metadata == 'y' %}
 # ERC721 Metadata Extension
 @pure
@@ -181,13 +184,15 @@ def name() -> String[40]:
 def symbol() -> String[5]:
     return SYMBOL
 
+{%- endif %}
+
 {%- if cookiecutter.updatable_uri == 'n' %}
 @view
 @external
 def baseURI() -> String[100]:
     return BASE_URI
-    
 {%- endif %}
+
 
 @view
 @external
@@ -198,7 +203,6 @@ def tokenURI(tokenId: uint256) -> String[179]:
     return concat(BASE_URI, "/" , uint2str(tokenId))
     {%- endif %}
 
-{%- endif %}
 
 {%- if cookiecutter.updatable_uri == 'y' %}
 
@@ -212,6 +216,7 @@ def setBaseURI(_baseURI: String[100]):
 
 
 {%- if cookiecutter.permitable == 'y' %}
+
 @external
 def setDomainSeparator():
     """
