@@ -1,10 +1,10 @@
 # Ape Academy ERC721 template
 
-Quick and easy way to build an NFT (powered by ApeWorX)
+Quick and easy way to build an NFT (powered by ApeWorX).
 
 ## Usage
 
-NOTE: Make sure to have the template plugin installed first
+NOTE: Make sure to have the template plugin installed first.
 
 ```sh
 $ ape template gh:ApeAcademy/ERC721
