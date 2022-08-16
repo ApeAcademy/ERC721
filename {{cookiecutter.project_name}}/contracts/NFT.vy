@@ -130,9 +130,10 @@ SYMBOL: constant(String[5]) = "{{cookiecutter.token_symbol}}"
 
 {%- if cookiecutter.updatable_uri == 'y' %}
 baseURI: public(String[100])
+default_uri: String[100]
 
 {%- else %}
-BASE_URI: constant(String[100]) = "dummy uri"
+BASE_URI: constant(String[100]) = "{{cookiecutter.base_uri}}"
 {%- endif %}
 
 
@@ -154,7 +155,8 @@ def __init__():
 {%- endif %}
 
 {%- if cookiecutter.updatable_uri == 'y' %}
-    self.baseURI = "dummy uri"
+    self.baseURI = ""
+    self.default_uri = "{{cookiecutter.default_uri}}"
 {%- endif %}
 
 
@@ -197,7 +199,11 @@ def baseURI() -> String[100]:
 @external
 def tokenURI(tokenId: uint256) -> String[179]:
     {%- if cookiecutter.updatable_uri == 'y' %}
-    return concat(self.baseURI, "/" , uint2str(tokenId))
+    if len(self.baseURI) == 0:
+        return self.default_uri
+    else:
+        return concat(self.baseURI, "/" , uint2str(tokenId))
+    
     {%- else%}
     return concat(BASE_URI, "/" , uint2str(tokenId))
     {%- endif %}

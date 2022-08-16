@@ -110,9 +110,9 @@ def test_approve_transfer(nft, owner, receiver):
 
 def test_uri(nft, owner):
     {%- if cookiecutter.updatable_uri == 'y' %}
-    assert nft.baseURI() == "dummy uri"
+    assert nft.baseURI() == ""
     nft.mint(owner, sender=owner)
-    
+    assert nft.tokenURI(1) == "{{cookiecutter.default_uri}}"
     
     nft.setBaseURI("new base uri", sender=owner)
     assert nft.baseURI() == "new base uri"
@@ -120,5 +120,5 @@ def test_uri(nft, owner):
     
     {%- else%}
     nft.mint(owner, sender=owner)
-    assert nft.tokenURI(1) == "dummy uri/1"
+    assert nft.tokenURI(1) == "{{cookiecutter.base_uri}}"+"/1"
     {%- endif %}
