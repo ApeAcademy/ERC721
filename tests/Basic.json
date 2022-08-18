@@ -4,6 +4,7 @@
     "token_name": "MyToken",
     "token_symbol": "TEST",
     "updatable_uri": "y",
+    "base_uri": "ipfs://QmfBhQ7jk64f852pwYsj5RKZp68ntX1LqGod98MZQxbwrv",
     "metadata": "y",
     "mintable": "y",
     "max_supply": "y",
