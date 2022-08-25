@@ -13,4 +13,4 @@ def receiver(accounts):
 
 @pytest.fixture(scope="session")
 def nft(owner, project):
-    return owner.deploy(project.NFT{%- if cookiecutter.metadata == 'y' %}, "dummy uri"{% endif %})
+    return owner.deploy(project.NFT)
