@@ -196,14 +196,12 @@ def baseURI() -> String[100]:
 @view
 @external
 def tokenURI(tokenId: uint256) -> String[179]:
-    {%- if cookiecutter.updatable_uri == 'y' %}
+{%- if cookiecutter.updatable_uri == 'y' %}
     return concat(self.baseURI, "/" , uint2str(tokenId))
-    
-    {%- else%}
-    return concat(BASE_URI, "/" , uint2str(tokenId))
-    
-    {%- endif %}
 
+{%- else %}
+    return concat(self.baseURI, "/" , uint2str(tokenId))
+{%- endif %}
 
 {%- if cookiecutter.updatable_uri == 'y' %}
 
