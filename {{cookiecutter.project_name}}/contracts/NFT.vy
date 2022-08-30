@@ -200,7 +200,7 @@ def tokenURI(tokenId: uint256) -> String[179]:
     return concat(self.baseURI, "/" , uint2str(tokenId))
 
 {%- else %}
-    return concat(self.baseURI, "/" , uint2str(tokenId))
+    return concat(BASE_URI, "/" , uint2str(tokenId))
 {%- endif %}
 
 {%- if cookiecutter.updatable_uri == 'y' %}
