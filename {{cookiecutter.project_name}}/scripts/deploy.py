@@ -22,7 +22,7 @@ def cli(cli_ctx, network, uri):
     Deploy the nft
     """
     network = cli_ctx.provider.network.name
-    if network == LOCAL_NETWORK_NAME or network.endwith("-fork"):
+    if network == LOCAL_NETWORK_NAME or network.endswith("-fork"):
         account = cli_ctx.account_manager.test_accounts[0]
     else:
         account = get_user_selected_account()
