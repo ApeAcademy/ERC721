@@ -13,11 +13,10 @@ def main():
 
 #perk you can add args unlike main method
 @click.command(cls=NetworkBoundCommand)
-@click.option("--uri", help = "base uri for nft", default = "dummy value")
 @ape_cli_context()
 @network_option()
 # cli_ctx must go first
-def cli(cli_ctx, network, uri):
+def cli(cli_ctx, network):
     """
     Deploy the nft
     """
@@ -27,4 +26,4 @@ def cli(cli_ctx, network, uri):
     else:
         account = get_user_selected_account()
     
-    account.deploy(project.NFT, uri)
+    account.deploy(project.NFT)
