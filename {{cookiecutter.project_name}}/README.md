@@ -1,3 +1,6 @@
-# {{cookiecutter.token_name}}
+# {{cookiecutter.project_name}}
 
-Generated from [NFT template](https://github.com/ApeAcademy/ERC721) by [Ape Academy](https://academy.apeworx.io)
+[![Ape Framework](https://img.shields.io/badge/Built%20with-Ape%20Framework-brightgreen.svg)](https://apeworx.io)
+[![Ape Academy](https://img.shields.io/badge/Ape%20Academy-ERC721%20template-yellow.svg)](https://github.com/ApeAcademy/ERC721)
+
+<!-- Your Description Goes Here -->
