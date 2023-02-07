@@ -11,8 +11,8 @@ jobs:
         - Basic
         - Mintable
     steps:
-    - uses: actions/checkout@v2
-    - uses: ApeWorX/github-action@v1
+    - uses: actions/checkout@v3
+    - uses: ApeWorX/github-action@v2
     - run: ape plugins install -U template
     - run: ape template . --replay-file tests/${{ matrix.template }}.json
     - name: Install plugins
