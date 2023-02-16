@@ -509,7 +509,7 @@ def mint(receiver: address) -> uint256:
     @return uint256 Computed TokenID of new Portfolio.
     """
 {%- if cookiecutter.max_supply == 'y' %}
-    assert MAX_SUPPLY >= self.totalSupply + 1
+    assert MAX_SUPPLY > self.totalSupply
 {%- endif %} 
 
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
