@@ -8,15 +8,17 @@ implements: ERC721
 
 ############ ERC-165 #############
 # @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[{{ 3 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) }}]) = [
+SUPPORTED_INTERFACES: constant(bytes4[{{ 2 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) + (1 if cookiecutter.royalties == "y" else 0) }}]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
-    0x2a55205a,  # ERC165 interface ID of ERC2981
 {%- if cookiecutter.metadata == 'y' %}
     0x5b5e139f,  # ERC165 interface ID of ERC721 Metadata Extension
 {%- endif %}
 {%- if cookiecutter.permitable == 'y' %}
     0x5604e225,  # ERC165 interface ID of ERC4494
+{%- endif %}
+{%- if cookiecutter.royalties == 'y' %}
+    0x2a55205a,  # ERC165 interface ID of ERC2981
 {%- endif %}
 ]
 
@@ -90,10 +92,32 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
+{%- if cookiecutter.royalties == 'y' %}
+# @dev This emits when an operator is enabled or disabled for an owner. The operator can manage
+#      all NFTs of the owner.
+# @param owner Owner of NFT.
+# @param salePrice price at which the owner as changed it
+# @param tokenId NFT which we are approving.
+event TokenPrice:
+    owner: indexed(address)
+    salePrice: indexed(uint256)
+    tokenId: indexed(uint256)
+{%- endif %}
+
 owner: public(address)
 isMinter: public(HashMap[address, bool])
 
 totalSupply: public(uint256)
+
+{%- if cookiecutter.royalties == 'y' %}
+token_price: public(uint256)
+
+floor_price: public(uint256)
+
+# @dev TokenID => price
+idToPrice: public(HashMap[uint256, uint256])
+
+{%- endif %}
 
 # @dev TokenID => owner
 idToOwner: public(HashMap[uint256, address])
@@ -106,6 +130,7 @@ isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 
 # @dev Mapping from NFT ID to approved address.
 idToApprovals: public(HashMap[uint256, address])
+
 
 {%- if cookiecutter.permitable == 'y' %}
 ############ ERC-4494 ############
@@ -144,6 +169,12 @@ MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
 
 {%- endif %}
 
+{%- if cookiecutter.royalties == 'y' %}
+# @dev Percentage of royalties for lifetime for the creator
+ROYALTY_PERCENTAGE: constant(uint256) = {{cookiecutter.royalty_percentage}}
+
+{%- endif %}
+
 @external
 def __init__():
     """
@@ -158,6 +189,10 @@ def __init__():
     self.baseURI = "{{cookiecutter.base_uri}}"
 {%- endif %}
 
+{%- if cookiecutter.floor_price == 'y' %}
+    #priced in USD
+    self.floor_price = floor_price
+{%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
@@ -233,6 +268,7 @@ def setDomainSeparator():
     )
 {%- endif %}
 
+
 ############ ERC-165 #############
 
 @pure
@@ -276,9 +312,46 @@ def getApproved(tokenId: uint256) -> address:
 @view
 @external
 def royaltyInfo(tokenId: uint256, salePrice: uint256) -> (address, uint256):
-    return self.owner, salePrice / 10  # 10% of salePrice
+    return self.owner, salePrice / ROYALTY_PERCENTAGE  # 10% of salePrice
 
-### TRANSFER FUNCTION HELPERS ###
+### TRANSFER AND PRICING FUNCTION HELPERS ###
+
+{%- if cookiecutter.royalties == 'y' %}
+@internal
+def _set_floor_price(owner: address, _floor_price: uint256) -> floor_price:
+    """
+    @dev Returns the price at which tokens are going to be sold by holders
+    @param owner address of the spender to query
+    @param salePrice uint256 ID of the token to be transferred
+    """
+    assert msg.sender == self.isMinter[msg.sender], "Access is denied."
+
+    # Change the price by owner of token
+    self.floor_price = _floor_price
+    return floor_price
+
+{%- endif %}
+
+{%- if cookiecutter.royalties == 'y' %}
+@internal
+def _token_price(owner: address, salePrice: uint256, tokenId: uint256):
+    """
+    @dev Returns the price at which tokens are going to be sold by holders always greater than floor price determine by contract owner
+    @param owner address of the spender to query
+    @param salePrice uint256 ID of the token to be transferred
+    """
+    assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
+    assert self.idToOwner[tokenId] == owner
+
+    # Change the price by owner of token always greater than floor price
+    if self.floor_price >= salePrice
+        self.idToPrice[tokenId] == salePrice
+        
+        # Log the transfer
+        log TokenPrice(owner, salePrice, tokenId)
+    # If sale price is lower than floor price is always set to the floor price
+    else self.idToPrice[tokenId] == floor_price
+{%- endif %}
 
 @view
 @internal
@@ -380,6 +453,16 @@ def safeTransferFrom(
     @param tokenId The NFT to transfer.
     @param data Additional data with no specified format, sent in call to `receiver`.
     """
+    {%- if cookiecutter.royalties == 'y' %}
+    #TODO
+    # 1 HASHmap the price of the token
+    # 2 Get the price of such token
+    # 3 Make function @payable applying the corresponding conditions
+    # 4 call royaltyInfo() to check % to distribute and to what account 
+
+    
+    # no royalties applied on mint by the creator
+    {%- endif %} 
     self._transferFrom(owner, receiver, tokenId, msg.sender)
     if receiver.is_contract: # check if `receiver` is a contract address
         returnValue: bytes4 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
@@ -524,6 +607,13 @@ def mint(receiver: address) -> uint256:
     
     self.idToOwner[self.totalSupply] = receiver
     self.balanceOf[receiver] += 1
+    {%- if cookiecutter.royalties == 'y' %}
+    #set price for every minted token to the floor price set by contract creator
+    self.token_price = self.floor_price
+    #apply as tokenID the current number of token supply 
+    self.idToPrice[self.totalSupply] == token_price
+    # no royalties applied on mint by the creator
+    {%- endif %} 
 
     log Transfer(empty(address), receiver, self.totalSupply)
 
