@@ -8,9 +8,10 @@ implements: ERC721
 
 ############ ERC-165 #############
 # @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[{{ 2 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) }}]) = [
+SUPPORTED_INTERFACES: constant(bytes4[{{ 3 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) }}]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
+    0x2a55205a,  # ERC165 interface ID of ERC2981
 {%- if cookiecutter.metadata == 'y' %}
     0x5b5e139f,  # ERC165 interface ID of ERC721 Metadata Extension
 {%- endif %}
@@ -272,6 +273,10 @@ def getApproved(tokenId: uint256) -> address:
     assert self.idToOwner[tokenId] != empty(address)
     return self.idToApprovals[tokenId]
 
+@view
+@external
+def royaltyInfo(tokenId: uint256, salePrice: uint256) -> (address, uint256):
+    return self.owner, salePrice / 10  # 10% of salePrice
 
 ### TRANSFER FUNCTION HELPERS ###
 
