@@ -102,6 +102,12 @@ event TokenPrice:
     owner: indexed(address)
     salePrice: indexed(uint256)
     tokenId: indexed(uint256)
+
+
+struct Token:
+    price: uint256
+    tokenId: uint256
+
 {%- endif %}
 
 owner: public(address)
@@ -110,16 +116,16 @@ isMinter: public(HashMap[address, bool])
 totalSupply: public(uint256)
 
 {%- if cookiecutter.royalties == 'y' %}
-token_price: public(uint256)
+
+addressToToken: HashMap[address, Token]
+
 
 floor_price: public(uint256)
 
-# @dev TokenID => price
-idToPrice: public(HashMap[uint256, uint256])
 
 {%- endif %}
 
-# @dev TokenID => owner
+# @dev TokenId => owner
 idToOwner: public(HashMap[uint256, address])
 
 # @dev Mapping from owner address to count of their tokens.
@@ -135,7 +141,7 @@ idToApprovals: public(HashMap[uint256, address])
 {%- if cookiecutter.permitable == 'y' %}
 ############ ERC-4494 ############
 
-# @dev Mapping of TokenID to nonce values used for ERC4494 signature verification
+# @dev Mapping of TokenId to nonce values used for ERC4494 signature verification
 nonces: public(HashMap[uint256, uint256])
 
 DOMAIN_SEPARATOR: public(bytes32)
@@ -309,26 +315,29 @@ def getApproved(tokenId: uint256) -> address:
     assert self.idToOwner[tokenId] != empty(address)
     return self.idToApprovals[tokenId]
 
+{%- if cookiecutter.royalties == 'y' %}
 @view
 @external
 def royaltyInfo(tokenId: uint256, salePrice: uint256) -> (address, uint256):
-    return self.owner, salePrice / ROYALTY_PERCENTAGE  # 10% of salePrice
+    assert msg.sender == 
+    return self.owner, salePrice / ROYALTY_PERCENTAGE  # 10 = 10% of salePrice / 20 = 5% of salePrice
 
+{%- endif %}
 ### TRANSFER AND PRICING FUNCTION HELPERS ###
 
 {%- if cookiecutter.royalties == 'y' %}
 @internal
-def _set_floor_price(owner: address, _floor_price: uint256) -> floor_price:
+def _set_floor_price(owner: address, _floor_price: uint256) -> uint256:
     """
-    @dev Returns the price at which tokens are going to be sold by holders
-    @param owner address of the spender to query
-    @param salePrice uint256 ID of the token to be transferred
+    @dev Returns floor price at which tokens can be sold, only set by the owner of the contract
+    @param owner of the smart contract
+    @param _floor_price uint256 ID of the token to be transferred
+    @return uint256 with the floor price
     """
-    assert msg.sender == self.isMinter[msg.sender], "Access is denied."
+    assert msg.sender == self.owner, "Access is denied."
 
     # Change the price by owner of token
-    self.floor_price = _floor_price
-    return floor_price
+    return self.floor_price = _floor_price
 
 {%- endif %}
 
@@ -455,12 +464,10 @@ def safeTransferFrom(
     """
     {%- if cookiecutter.royalties == 'y' %}
     #TODO
-    # 1 HASHmap the price of the token
-    # 2 Get the price of such token
-    # 3 Make function @payable applying the corresponding conditions
+    # 1 HASHmap the price and tokenid of the token with struct OK!
+    # 2 Get the price of such token on transfer by checking addressToToken
+    # 3 Make independent function @payable applying the corresponding conditions
     # 4 call royaltyInfo() to check % to distribute and to what account 
-
-    
     # no royalties applied on mint by the creator
     {%- endif %} 
     self._transferFrom(owner, receiver, tokenId, msg.sender)
@@ -590,11 +597,11 @@ def addMinter(minter: address):
 
 
 @external
-def mint(receiver: address) -> uint256:
+def mint(receiver: address) -> Token:
     """
     @dev Create a new Owner NFT
     @notice `tokenId` cannot be owned by someone because of hash production.
-    @return uint256 Computed TokenID of new Portfolio.
+    @return Token struct with token price
     """
 {%- if cookiecutter.max_supply == 'y' %}
     assert MAX_SUPPLY > self.totalSupply
@@ -607,15 +614,21 @@ def mint(receiver: address) -> uint256:
     
     self.idToOwner[self.totalSupply] = receiver
     self.balanceOf[receiver] += 1
+
+    #create token
+    newToken: Token = Token({
+        {%- if cookiecutter.royalties == 'y' %}
+        price: self.floor_price,
+        {%- endif %} 
+        tokenId: self.totalSupply
+    })
     {%- if cookiecutter.royalties == 'y' %}
-    #set price for every minted token to the floor price set by contract creator
-    self.token_price = self.floor_price
-    #apply as tokenID the current number of token supply 
-    self.idToPrice[self.totalSupply] == token_price
+    #mapping to store price tokenId and address owner
+    self.addressToToken[msg.sender] = newToken
     # no royalties applied on mint by the creator
     {%- endif %} 
 
     log Transfer(empty(address), receiver, self.totalSupply)
 
-    return self.totalSupply
+    return newToken
 {%- endif %}

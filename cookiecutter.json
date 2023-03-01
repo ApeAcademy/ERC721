@@ -11,5 +11,5 @@
     "permitable": "y",
     "royalties": "y",
     "royalty_percentage": "10",
-    "floor_price": "50"
+    "floor_price": 50
 }
