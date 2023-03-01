@@ -117,11 +117,9 @@ isMinter: public(HashMap[address, bool])
 totalSupply: public(uint256)
 
 {%- if cookiecutter.royalties == 'y' %}
-
 addressToToken: HashMap[address, Token]
 
 floor_price: public(uint256)
-
 {%- endif %}
 
 # @dev TokenId => owner
@@ -468,8 +466,9 @@ def safeTransferFrom(
     """
     {%- if cookiecutter.royalties == 'y' %}
     #TODO
+    # 0 ideally we should check on addressToToken by TokenId instead of address because some users might have multiple NFTs
     # 1 HASHmap the price and tokenid of the token with struct OK!
-    # 2 Get the price of such token on transfer by checking addressToToken
+    # 2 Get the price of such token on transfer by checking tokenIdToToken HashMap
     # 3 Make independent function @payable applying the corresponding conditions
     # 4 call royaltyInfo() to check % to distribute and to what account 
     # no royalties applied on mint by the creator
@@ -601,23 +600,14 @@ def addMinter(minter: address):
 
 
 @external
-def mint(receiver: address) -> Token:
+def mint(to_address: address):
     """
-    @dev Create a new Owner NFT
-    @notice `tokenId` cannot be owned by someone because of hash production.
-    @return Token struct with token price
+    @notice mint token one by one, anyone can mint
+    @param to_address the address to which we want to mint the token
     """
 {%- if cookiecutter.max_supply == 'y' %}
     assert MAX_SUPPLY > self.totalSupply
-{%- endif %} 
-
-    assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
-
-    self.totalSupply += 1
-    assert self.idToOwner[self.totalSupply] == empty(address)  # Sanity check
-    
-    self.idToOwner[self.totalSupply] = receiver
-    self.balanceOf[receiver] += 1
+{%- endif %}
 
     #create token
     newToken: Token = Token({
@@ -632,7 +622,12 @@ def mint(receiver: address) -> Token:
     # no royalties applied on mint by the creator
     {%- endif %} 
 
-    log Transfer(empty(address), receiver, self.totalSupply)
+    self.totalSupply += 1
+    assert self.idToOwner[self.totalSupply] == empty(address)  # Sanity check
+    
+    self.idToOwner[self.totalSupply] = to_address
+    self.balanceOf[to_address] += 1
 
-    return newToken
+    log Transfer(empty(address), to_address, self.totalSupply)
+
 {%- endif %}
