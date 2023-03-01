@@ -107,6 +107,7 @@ event TokenPrice:
 struct Token:
     price: uint256
     tokenId: uint256
+    owner: address
 
 {%- endif %}
 
@@ -119,9 +120,7 @@ totalSupply: public(uint256)
 
 addressToToken: HashMap[address, Token]
 
-
 floor_price: public(uint256)
-
 
 {%- endif %}
 
@@ -319,7 +318,7 @@ def getApproved(tokenId: uint256) -> address:
 @view
 @external
 def royaltyInfo(tokenId: uint256, salePrice: uint256) -> (address, uint256):
-    assert msg.sender == 
+    assert msg.sender == self.owner
     return self.owner, salePrice / ROYALTY_PERCENTAGE  # 10 = 10% of salePrice / 20 = 5% of salePrice
 
 {%- endif %}
@@ -327,7 +326,7 @@ def royaltyInfo(tokenId: uint256, salePrice: uint256) -> (address, uint256):
 
 {%- if cookiecutter.royalties == 'y' %}
 @internal
-def _set_floor_price(owner: address, _floor_price: uint256) -> uint256:
+def _set_floor_price(owner: address, _floor_price: uint256):
     """
     @dev Returns floor price at which tokens can be sold, only set by the owner of the contract
     @param owner of the smart contract
@@ -336,30 +335,35 @@ def _set_floor_price(owner: address, _floor_price: uint256) -> uint256:
     """
     assert msg.sender == self.owner, "Access is denied."
 
-    # Change the price by owner of token
-    return self.floor_price = _floor_price
+    # Change the floor price by owner of token
+    self.floor_price = _floor_price
 
 {%- endif %}
 
 {%- if cookiecutter.royalties == 'y' %}
+
 @internal
-def _token_price(owner: address, salePrice: uint256, tokenId: uint256):
+def _token_price(_owner: address, _salePrice: uint256, _tokenId: uint256):
     """
     @dev Returns the price at which tokens are going to be sold by holders always greater than floor price determine by contract owner
     @param owner address of the spender to query
     @param salePrice uint256 ID of the token to be transferred
     """
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
-    assert self.idToOwner[tokenId] == owner
-
+    assert self.totalSupply != empty(uint256)
     # Change the price by owner of token always greater than floor price
-    if self.floor_price >= salePrice
-        self.idToPrice[tokenId] == salePrice
+    if (self.floor_price >= _salePrice):
+        token: Token = self.addressToToken[_owner]
+        #check if correct token
+        assert token.tokenId == _tokenId
+        token.price = _salePrice
         
         # Log the transfer
-        log TokenPrice(owner, salePrice, tokenId)
-    # If sale price is lower than floor price is always set to the floor price
-    else self.idToPrice[tokenId] == floor_price
+        log TokenPrice(_owner, _salePrice, _tokenId)
+    # If sale price is lower than floor price is always set to the floor price, nothing to see here
+    else:
+        pass
+
 {%- endif %}
 
 @view
