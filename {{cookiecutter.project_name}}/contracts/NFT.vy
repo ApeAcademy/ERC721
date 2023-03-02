@@ -204,7 +204,7 @@ def __init__():
     self.baseURI = "{{cookiecutter.base_uri}}"
 {%- endif %}
 
-{%- if cookiecutter.floor_price == 'y' %}
+{%- if cookiecutter.floor_price_eth == 'y' %}
     #priced in ETH
     self.floor_price = "{{cookiecutter.floor_price_eth}}"
 {%- endif %}
