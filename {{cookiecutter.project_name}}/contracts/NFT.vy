@@ -157,6 +157,11 @@ MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
 
 {%- endif %}
 
+{%- if cookiecutter.royalties == 'y' %}
+# @dev Percentage of royalties for lifetime for the creator
+ROYALTY_PERCENTAGE: constant(uint256) = {{cookiecutter.royalty_percentage}}
+{%- endif %}
+
 @external
 def __init__():
     """
@@ -294,7 +299,7 @@ def getApproved(tokenId: uint256) -> address:
 @external
 @view
 def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
-        """
+    """
     /// @notice Called with the sale price to determine how much royalty
     //          is owed and to whom. Important; Not all marketplaces respect this, e.g. OpenSea
     /// @param _tokenId - the NFT asset queried for royalty information
@@ -305,8 +310,8 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     # check creator of contract
     assert msg.sender == self.owner
     # log Payment
-    log RoyalityInfo(salePrice / ROYALTY_PERCENTAGE, block.timestamp, salePrice, msg.sender)
-    return self.owner, salePrice / ROYALTY_PERCENTAGE  # 10 = 10% of salePrice / 20 = 5% of salePrice
+    log RoyalityInfo(_salePrice / ROYALTY_PERCENTAGE, block.timestamp, _salePrice, msg.sender)
+    return self.owner, _salePrice / ROYALTY_PERCENTAGE  # 10 = 10% of salePrice / 20 = 5% of salePrice
 {%- endif %}
 
 @view
