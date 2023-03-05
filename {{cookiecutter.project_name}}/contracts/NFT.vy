@@ -93,53 +93,22 @@ event ApprovalForAll:
     approved: bool
 
 {%- if cookiecutter.royalties == 'y' %}
-# @dev This emits when an operator is enabled or disabled for an owner. The operator can manage
-#      all NFTs of the owner.
-# @param owner Owner of NFT.
-# @param salePrice price at which the owner as changed it
-# @param tokenId NFT which we are approving.
-event TokenPrice:
-    owner: indexed(address)
-    salePrice: indexed(uint256)
-    tokenId: indexed(uint256)
-
 # @dev This emits when a royalty fee is paid to the contract creator
 # @param fee price at which the owner as changed it
 # @param amount sold NFT
 # @param buyer of the NFT
-event PaymentFee:
+event RoyalityInfo:
     fee: indexed(uint256)
+    transactionDate: indexed(uint256)
     amount: uint256
     buyer: address
-
-# @dev This emits any payment transaction interacted within the contract
-# @param amount price at which the owner as changed it
-# @param bal sold NFT
-# @param gasLeft of the NFT
-event Payment:
-    amount: uint256
-    bal: uint256
-    gasLeft: uint256
-
-# struct for token data
-struct Token:
-    owner: address
-    price: uint256
-    tokenId: uint256
-
 {%- endif %}
 
 owner: public(address)
 
 totalSupply: public(uint256)
 
-{%- if cookiecutter.royalties == 'y' %}
-tokenIdToToken: HashMap[uint256, Token]
-
-floor_price: public(uint256)
-{%- endif %}
-
-# @dev TokenId => owner
+# @dev TokenID => owner
 idToOwner: public(HashMap[uint256, address])
 
 # @dev Mapping from owner address to count of their tokens.
@@ -151,11 +120,10 @@ isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 # @dev Mapping from NFT ID to approved address.
 idToApprovals: public(HashMap[uint256, address])
 
-
 {%- if cookiecutter.permitable == 'y' %}
 ############ ERC-4494 ############
 
-# @dev Mapping of TokenId to nonce values used for ERC4494 signature verification
+# @dev Mapping of TokenID to nonce values used for ERC4494 signature verification
 nonces: public(HashMap[uint256, uint256])
 
 DOMAIN_SEPARATOR: public(bytes32)
@@ -189,11 +157,6 @@ MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
 
 {%- endif %}
 
-{%- if cookiecutter.royalties == 'y' %}
-# @dev Percentage of royalties for lifetime for the creator
-ROYALTY_PERCENTAGE: constant(uint256) = {{cookiecutter.royalty_percentage}}
-{%- endif %}
-
 @external
 def __init__():
     """
@@ -208,10 +171,6 @@ def __init__():
     self.baseURI = "{{cookiecutter.base_uri}}"
 {%- endif %}
 
-{%- if cookiecutter.floor_price_eth == 'y' %}
-    #priced in ETH
-    self.floor_price = "{{cookiecutter.floor_price_eth}}"
-{%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
@@ -224,14 +183,6 @@ def __init__():
             self,
         )
     )
-
-{%- endif %}
-{%- if cookiecutter.royalties == 'y' %}
-
-@external
-@payable
-def __default__():
-    log Payment(msg.value, self.balance, msg.gas)
 {%- endif %}
 
 {%- if cookiecutter.metadata == 'y' %}
@@ -295,7 +246,6 @@ def setDomainSeparator():
     )
 {%- endif %}
 
-
 ############ ERC-165 #############
 
 @pure
@@ -323,6 +273,7 @@ def ownerOf(tokenId: uint256) -> address:
     assert owner != empty(address)
     return owner
 
+
 @view
 @external
 def getApproved(tokenId: uint256) -> address:
@@ -335,63 +286,27 @@ def getApproved(tokenId: uint256) -> address:
     assert self.idToOwner[tokenId] != empty(address)
     return self.idToApprovals[tokenId]
 
-{%- if cookiecutter.royalties == 'y' %}
 
-@internal
-@payable
-def _royaltyFee(tokenId: uint256, salePrice: uint256):
+### TRANSFER FUNCTION HELPERS ###
+
+{%- if cookiecutter.permitable == 'y' %}
+### Royalty integration under the ERC-2981: NFT Royalty Standard
+@external
+@view
+def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
+        """
+    /// @notice Called with the sale price to determine how much royalty
+    //          is owed and to whom. Important; Not all marketplaces respect this, e.g. OpenSea
+    /// @param _tokenId - the NFT asset queried for royalty information
+    /// @param _salePrice - the sale price of the NFT asset specified by _tokenId
+    /// @return receiver - address of who should be sent the royalty payment
+    /// @return royaltyAmount - the royalty payment amount for _salePrice
+    """
     # check creator of contract
     assert msg.sender == self.owner
-    #returns the total amount to be sent to creator
-    _royaltyFee: uint256 = salePrice / ROYALTY_PERCENTAGE  # 10 = 10% of salePrice / 20 = 5% of salePrice
-    send(self.owner, _royaltyFee)
     # log Payment
-    log PaymentFee(_royaltyFee, salePrice, msg.sender)
-
-{%- endif %}
-### TRANSFER AND PRICING FUNCTION HELPERS ###
-
-{%- if cookiecutter.royalties == 'y' %}
-
-@internal
-def _set_floor_price(owner: address, _floor_price: uint256):
-    """
-    @dev Returns floor price at which tokens can be sold, only set by the owner of the contract
-    @param owner of the smart contract
-    @param _floor_price uint256 ID of the token to be transferred
-    @return uint256 with the floor price
-    """
-    assert msg.sender == self.owner, "Access is denied."
-
-    # Change the floor price by owner of token
-    self.floor_price = _floor_price
-
-{%- endif %}
-
-{%- if cookiecutter.royalties == 'y' %}
-
-@internal
-def _token_price(_owner: address, _salePrice: uint256, _tokenId: uint256):
-    """
-    @dev Returns the price at which tokens are going to be sold by holders always greater than floor price determine by contract owner
-    @param owner address of the spender to query
-    @param salePrice uint256 ID of the token to be transferred
-    """
-    assert msg.sender == self.owner or self.idToOwner[_tokenId] == _owner, "Access is denied."
-    assert self.totalSupply != empty(uint256)
-    # Change the price by owner of token always greater than floor price
-    if (self.floor_price >= _salePrice):
-        token: Token = self.tokenIdToToken[_tokenId]
-        #check if correct token
-        assert token.tokenId == _tokenId
-        token.price = _salePrice
-        
-        # Log the transfer
-        log TokenPrice(_owner, _salePrice, _tokenId)
-    # If sale price is lower than floor price is always set to the floor price, nothing to see here
-    else:
-        pass
-
+    log RoyalityInfo(salePrice / ROYALTY_PERCENTAGE, block.timestamp, salePrice, msg.sender)
+    return self.owner, salePrice / ROYALTY_PERCENTAGE  # 10 = 10% of salePrice / 20 = 5% of salePrice
 {%- endif %}
 
 @view
@@ -419,7 +334,7 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
 
 
 @internal
-def _transferFrom(_owner: address, _receiver: address, _tokenId: uint256, _sender: address):
+def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: address):
     """
     @dev Execute transfer of a NFT.
          Throws unless `msg.sender` is the current owner, an authorized operator, or the approved
@@ -428,48 +343,32 @@ def _transferFrom(_owner: address, _receiver: address, _tokenId: uint256, _sende
          Throws if `receiver` is the zero address.
          Throws if `owner` is not the current owner.
          Throws if `tokenId` is not a valid NFT.
+         
     """
     # Check requirements
-    assert self._isApprovedOrOwner(_sender, _tokenId)
-    assert _receiver != empty(address)
-    assert _owner != empty(address)
-    assert self.idToOwner[_tokenId] == _owner
+    assert self._isApprovedOrOwner(sender, tokenId)
+    assert receiver != empty(address)
+    assert owner != empty(address)
+    assert self.idToOwner[tokenId] == owner
 
     # Reset approvals, if any
-    if self.idToApprovals[_tokenId] != empty(address):
-        self.idToApprovals[_tokenId] = empty(address)
+    if self.idToApprovals[tokenId] != empty(address):
+        self.idToApprovals[tokenId] = empty(address)
 
 {%- if cookiecutter.permitable == 'y' %}
     # EIP-4494: increment nonce on transfer for safety
-    self.nonces[_tokenId] += 1
+    self.nonces[tokenId] += 1
 {%- endif %}
 
-{%- if cookiecutter.royalties == 'y' %}
-    # apply royalties to contract creator
-    token: Token = self.tokenIdToToken[_tokenId]
-    #check if owner of token
-    assert token.owner == msg.sender
-    #check if correct token
-    assert token.tokenId == _tokenId
-    #check price
-    _salePrice: uint256 = token.price
-    #payment  of the royalty fees
-    self._royaltyFee(_tokenId, _salePrice)
-{%- endif %} 
-
     # Change the owner
-{%- if cookiecutter.royalties == 'y' %}
-    self.tokenIdToToken[_tokenId] = Token({owner: _owner, price: _salePrice, tokenId: _tokenId})
-{%- endif %} 
-    self.idToOwner[tokenId] = _receiver
+    self.idToOwner[tokenId] = receiver
 
     # Change count tracking
-    self.balanceOf[_owner] -= 1
-    self.balanceOf[_receiver] += 1
+    self.balanceOf[owner] -= 1
+    self.balanceOf[receiver] += 1
 
     # Log the transfer
-    log Transfer(_owner, _receiver, _tokenId)
-    print("Test")
+    log Transfer(owner, receiver, tokenId)
 
 
 @external
@@ -490,12 +389,11 @@ def transferFrom(owner: address, receiver: address, tokenId: uint256):
 
 
 @external
-@payable
 def safeTransferFrom(
-        _owner: address,
-        _receiver: address,
-        _tokenId: uint256,
-        _data: Bytes[1024]=b""
+        owner: address,
+        receiver: address,
+        tokenId: uint256,
+        data: Bytes[1024]=b""
     ):
     """
     @dev Transfers the ownership of an NFT from one address to another address.
@@ -507,14 +405,14 @@ def safeTransferFrom(
          If `receiver` is a smart contract, it calls `onERC721Received` on `receiver` and throws if
          the return value is not `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`.
          NOTE: bytes4 is represented by bytes32 with padding
-    @param _owner The current owner of the NFT.
-    @param _receiver The new owner.
-    @param _tokenId The NFT to transfer.
-    @param _data Additional data with no specified format, sent in call to `receiver`.
+    @param owner The current owner of the NFT.
+    @param receiver The new owner.
+    @param tokenId The NFT to transfer.
+    @param data Additional data with no specified format, sent in call to `receiver`.
     """
-    self._transferFrom(_owner, _receiver, _tokenId, msg.sender)
-    if _receiver.is_contract: # check if `receiver` is a contract address
-        returnValue: bytes4 = ERC721Receiver(_receiver).onERC721Received(msg.sender, _owner, _tokenId, _data)
+    self._transferFrom(owner, receiver, tokenId, msg.sender)
+    if receiver.is_contract: # check if `receiver` is a contract address
+        returnValue: bytes4 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
         # Throws if transfer destination is a contract which does not implement 'onERC721Received'
         assert returnValue == method_id("onERC721Received(address,address,uint256,bytes)", output_type=bytes4)
 
@@ -533,7 +431,6 @@ def approve(operator: address, tokenId: uint256):
     owner: address = self.idToOwner[tokenId]
     assert owner != empty(address)
 
-
     # Throws if `operator` is the current owner
     assert operator != owner
 
@@ -544,7 +441,6 @@ def approve(operator: address, tokenId: uint256):
     log Approval(owner, operator, tokenId)
 
 {%- if cookiecutter.permitable == 'y' %}
-
 @external
 def permit(spender: address, tokenId: uint256, deadline: uint256, sig: Bytes[65]) -> bool:
     """
@@ -634,38 +530,26 @@ def setApprovalForAll(operator: address, approved: bool):
 
 {%- if cookiecutter.mintable == 'y' %}
 
+
 @external
-def mint(to_address: address) -> bool:
+def mint(receiver: address) -> bool:
     """
-    @notice mint token one by one, anyone can mint
-    @param to_address the address to which we want to mint the token
+    @dev Create a new Owner NFT
+    @return bool confirming that the minting occurred 
     """
 {%- if cookiecutter.max_supply == 'y' %}
     assert MAX_SUPPLY > self.totalSupply
-{%- endif %}
+{%- endif %} 
 
-    #create token
-    newToken: Token = Token({
-        owner: msg.sender,
-        {%- if cookiecutter.royalties == 'y' %}
-        price: self.floor_price,
-        {%- endif %}
-        tokenId: self.totalSupply
-    })
-    
+    assert msg.sender == self.owner, "Only contract owner can mint"
+
     self.totalSupply += 1
     assert self.idToOwner[self.totalSupply] == empty(address)  # Sanity check
-{%- if cookiecutter.royalties == 'y' %}
-    #mapping to store price tokenId and address owner
-    # tokenIdToToken is only used when royalties are set to 'y'
-    self.tokenIdToToken[self.totalSupply] = newToken
-    # no royalties applied on mint by the creator
-{%- endif %} 
-    # we also store the owner on this hashmap so that the contract can also work fine if no royalties required and salePrice or floorPrice
-    self.idToOwner[self.totalSupply] = to_address
-    self.balanceOf[to_address] += 1
+    
+    self.idToOwner[self.totalSupply] = receiver
+    self.balanceOf[receiver] += 1
 
-    log Transfer(empty(address), to_address, self.totalSupply)
+    log Transfer(empty(address), receiver, self.totalSupply)
+
     return True
-
 {%- endif %}
