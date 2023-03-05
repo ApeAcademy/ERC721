@@ -469,6 +469,7 @@ def _transferFrom(_owner: address, _receiver: address, _tokenId: uint256, _sende
 
     # Log the transfer
     log Transfer(_owner, _receiver, _tokenId)
+    print("Test")
 
 
 @external
