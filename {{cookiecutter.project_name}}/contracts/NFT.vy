@@ -297,7 +297,6 @@ def getApproved(tokenId: uint256) -> address:
 {%- if cookiecutter.permitable == 'y' %}
 ### Royalty integration under the ERC-2981: NFT Royalty Standard
 @external
-@view
 def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     """
     /// @notice Called with the sale price to determine how much royalty
@@ -310,8 +309,9 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     # check creator of contract
     assert msg.sender == self.owner
     # log Payment
-    log RoyalityInfo(_salePrice / ROYALTY_PERCENTAGE, block.timestamp, _salePrice, msg.sender)
-    return self.owner, _salePrice / ROYALTY_PERCENTAGE  # 10 = 10% of salePrice / 20 = 5% of salePrice
+    _royalty: uint256 = convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256 # Percentage that accepts decimals
+    log RoyalityInfo(_royalty, block.timestamp, _salePrice, msg.sender)
+    return self.owner, _royalty
 {%- endif %}
 
 @view

@@ -9,7 +9,9 @@
     "mintable": "y",
     "max_supply": "y",
     "max_supply_amount": 3,
-    "permitable": "y"
+    "permitable": "y",
+    "royalties": "y",
+    "royalty_percentage": 10.0
     
   }
 }
