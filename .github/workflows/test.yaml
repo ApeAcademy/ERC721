@@ -10,6 +10,8 @@ jobs:
         template:
         - Basic
         - Mintable
+    env:
+      GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v3
     - uses: ApeWorX/github-action@v2
