@@ -92,19 +92,8 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
-{%- if cookiecutter.royalties == 'y' %}
-# @dev This emits when a royalty fee is paid to the contract creator
-# @param fee price at which the owner as changed it
-# @param amount sold NFT
-# @param buyer of the NFT
-event RoyalityInfo:
-    fee: indexed(uint256)
-    transactionDate: indexed(uint256)
-    amount: uint256
-    buyer: address
-{%- endif %}
-
 owner: public(address)
+isMinter: public(HashMap[address, bool])
 
 totalSupply: public(uint256)
 
@@ -159,7 +148,7 @@ MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
 
 {%- if cookiecutter.royalties == 'y' %}
 # @dev Percentage of royalties for lifetime for the creator
-ROYALTY_PERCENTAGE: constant(uint256) = {{cookiecutter.royalty_percentage}}
+ROYALTY_PERCENTAGE: constant(decimal) = {{ cookiecutter.royalty_percentage / 100.0 }}
 {%- endif %}
 
 @external
@@ -306,12 +295,9 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     /// @return receiver - address of who should be sent the royalty payment
     /// @return royaltyAmount - the royalty payment amount for _salePrice
     """
-    # check creator of contract
-    assert msg.sender == self.owner
-    # log Payment
-    _royalty: uint256 = convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256 # Percentage that accepts decimals
-    log RoyalityInfo(_royalty, block.timestamp, _salePrice, msg.sender)
-    return self.owner, _royalty
+
+    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256) # Percentage that accepts decimals
+    return self.owner, royalty
 {%- endif %}
 
 @view
@@ -537,6 +523,11 @@ def setApprovalForAll(operator: address, approved: bool):
 
 
 @external
+def addMinter(minter: address):
+    assert msg.sender == self.owner
+    self.isMinter[minter] = True
+
+@external
 def mint(receiver: address) -> bool:
     """
     @dev Create a new Owner NFT
@@ -546,7 +537,7 @@ def mint(receiver: address) -> bool:
     assert MAX_SUPPLY > self.totalSupply
 {%- endif %} 
 
-    assert msg.sender == self.owner, "Only contract owner can mint"
+    assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
 
     self.totalSupply += 1
     assert self.idToOwner[self.totalSupply] == empty(address)  # Sanity check
