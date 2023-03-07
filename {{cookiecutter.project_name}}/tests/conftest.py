@@ -14,7 +14,3 @@ def receiver(accounts):
 @pytest.fixture(scope="session")
 def nft(owner, project):
     return owner.deploy(project.NFT)
-
-@pytest.approx()
-def royalty_percentage():
-    return 10.0
