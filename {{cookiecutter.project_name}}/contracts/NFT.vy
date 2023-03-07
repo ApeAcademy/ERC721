@@ -92,18 +92,6 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
-{%- if cookiecutter.royalties == 'y' %}
-# @dev This emits when a royalty fee is paid to the contract creator
-# @param fee price at which the owner as changed it
-# @param amount sold NFT
-# @param buyer of the NFT
-event RoyalityInfo:
-    fee: indexed(uint256)
-    transactionDate: indexed(uint256)
-    amount: uint256
-    buyer: address
-{%- endif %}
-
 owner: public(address)
 
 totalSupply: public(uint256)
