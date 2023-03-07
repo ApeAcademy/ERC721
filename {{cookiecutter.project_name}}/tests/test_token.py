@@ -118,18 +118,16 @@ def test_uri(nft, owner):
     assert nft.baseURI() == "{{cookiecutter.base_uri}}"
     nft.mint(owner, sender=owner)
     assert nft.tokenURI(1) == "{{cookiecutter.base_uri}}/1"
-    
     {%- if cookiecutter.updatable_uri == 'y' %}
 
     nft.setBaseURI("new base uri", sender=owner)
     assert nft.baseURI() == "new base uri"
     assert nft.tokenURI(1) == "new base uri/1"
-    
     {%- endif %}
+{%- if cookiecutter.royalties == 'y' %}
 
- {%- if cookiecutter.royalties == 'y' %}
 
 def test_royaltyInfo(nft):
     expected_royalty = int({{ cookiecutter.royalty_percentage / 100.0 }} * ape.convert("1 ether", int))
-    assert nft.royaltyInfo(1, "1 ether")[1] == pytest.approx(expected_royalty)
+    assert nft.royaltyInfo(1, "1 ether") == (nft.owner(), pytest.approx(expected_royalty))
 {%- endif %}
