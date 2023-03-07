@@ -129,6 +129,6 @@ def test_uri(nft, owner):
  {%- if cookiecutter.royalties == 'y' %}
 
 def test_royaltyInfo(nft, royalty_percentage):
-    expected_royalty = int({{ {%- cookiecutter.royalty_percentage %} / 100.0 }}  * ape.convert("1 ether", int))
+    expected_royalty = int({{ cookiecutter.royalty_percentage / 100.0 }} * ape.convert("1 ether", int))
     assert nft.royaltyInfo(1, "1 ether") == ape.approx(expected_royalty)
 {%- endif %}
