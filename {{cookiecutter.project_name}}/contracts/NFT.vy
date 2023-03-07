@@ -285,6 +285,7 @@ def getApproved(tokenId: uint256) -> address:
 
 {%- if cookiecutter.permitable == 'y' %}
 ### Royalty integration under the ERC-2981: NFT Royalty Standard
+@view
 @external
 def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     """
