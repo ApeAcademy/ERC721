@@ -1,5 +1,5 @@
 import ape
-
+import pytest
 
 def test_erc165(nft):
     # ERC165 interface ID of ERC165
@@ -19,6 +19,11 @@ def test_erc165(nft):
 
     # ERC165 interface ID of ERC4494
     assert nft.supportsInterface("0x5604e225")
+{%- endif %}
+
+{%- if cookiecutter.royalties == 'y' %}
+    # ERC165 interface ID of ERC2981
+    assert nft.supportsInterface("0x2a55205a")
 {%- endif %}
 
 
@@ -121,3 +126,10 @@ def test_uri(nft, owner):
     assert nft.tokenURI(1) == "new base uri/1"
     
     {%- endif %}
+
+ {%- if cookiecutter.royalties == 'y' %}
+
+def test_royaltyInfo(nft):
+    expected_royalty = int({{ cookiecutter.royalty_percentage / 100.0 }} * ape.convert("1 ether", int))
+    assert nft.royaltyInfo(1, "1 ether")[1] == pytest.approx(expected_royalty)
+{%- endif %}

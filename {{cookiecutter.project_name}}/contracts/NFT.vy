@@ -8,7 +8,7 @@ implements: ERC721
 
 ############ ERC-165 #############
 # @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[{{ 2 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) }}]) = [
+SUPPORTED_INTERFACES: constant(bytes4[{{ 2 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) + (1 if cookiecutter.royalties == "y" else 0) }}]) = [
     0x01ffc9a7,  # ERC165 interface ID of ERC165
     0x80ac58cd,  # ERC165 interface ID of ERC721
 {%- if cookiecutter.metadata == 'y' %}
@@ -16,6 +16,9 @@ SUPPORTED_INTERFACES: constant(bytes4[{{ 2 + (1 if cookiecutter.metadata == "y" 
 {%- endif %}
 {%- if cookiecutter.permitable == 'y' %}
     0x5604e225,  # ERC165 interface ID of ERC4494
+{%- endif %}
+{%- if cookiecutter.royalties == 'y' %}
+    0x2a55205a,  # ERC165 interface ID of ERC2981
 {%- endif %}
 ]
 
@@ -141,6 +144,11 @@ BASE_URI: constant(String[100]) = "{{cookiecutter.base_uri}}"
 # @dev Maximum supply of token
 MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
 
+{%- endif %}
+
+{%- if cookiecutter.royalties == 'y' %}
+# @dev Percentage of royalties for lifetime for the creator
+ROYALTY_PERCENTAGE: constant(decimal) = {{ cookiecutter.royalty_percentage / 100.0 }}
 {%- endif %}
 
 @external
@@ -275,6 +283,24 @@ def getApproved(tokenId: uint256) -> address:
 
 ### TRANSFER FUNCTION HELPERS ###
 
+{%- if cookiecutter.permitable == 'y' %}
+### Royalty integration under the ERC-2981: NFT Royalty Standard
+@view
+@external
+def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
+    """
+    /// @notice Called with the sale price to determine how much royalty
+    //          is owed and to whom. Important; Not all marketplaces respect this, e.g. OpenSea
+    /// @param _tokenId - the NFT asset queried for royalty information
+    /// @param _salePrice - the sale price of the NFT asset specified by _tokenId
+    /// @return receiver - address of who should be sent the royalty payment
+    /// @return royaltyAmount - the royalty payment amount for _salePrice
+    """
+
+    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256) # Percentage that accepts decimals
+    return self.owner, royalty
+{%- endif %}
+
 @view
 @internal
 def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
@@ -309,6 +335,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
          Throws if `receiver` is the zero address.
          Throws if `owner` is not the current owner.
          Throws if `tokenId` is not a valid NFT.
+         
     """
     # Check requirements
     assert self._isApprovedOrOwner(sender, tokenId)
@@ -494,19 +521,18 @@ def setApprovalForAll(operator: address, approved: bool):
     log ApprovalForAll(msg.sender, operator, approved)
 
 {%- if cookiecutter.mintable == 'y' %}
+
+
 @external
 def addMinter(minter: address):
     assert msg.sender == self.owner
     self.isMinter[minter] = True
 
-
-
 @external
-def mint(receiver: address) -> uint256:
+def mint(receiver: address) -> bool:
     """
     @dev Create a new Owner NFT
-    @notice `tokenId` cannot be owned by someone because of hash production.
-    @return uint256 Computed TokenID of new Portfolio.
+    @return bool confirming that the minting occurred 
     """
 {%- if cookiecutter.max_supply == 'y' %}
     assert MAX_SUPPLY > self.totalSupply
@@ -522,5 +548,5 @@ def mint(receiver: address) -> uint256:
 
     log Transfer(empty(address), receiver, self.totalSupply)
 
-    return self.totalSupply
+    return True
 {%- endif %}
