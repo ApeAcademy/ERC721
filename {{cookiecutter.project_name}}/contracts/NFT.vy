@@ -295,8 +295,13 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     /// @return receiver - address of who should be sent the royalty payment
     /// @return royaltyAmount - the royalty payment amount for _salePrice
     """
+<<<<<<< HEAD
 
     royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256) # Percentage that accepts decimals
+=======
+    # log Payment
+    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256)
+>>>>>>> origin/price-controler
     return self.owner, royalty
 {%- endif %}
 
