@@ -296,7 +296,6 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     """
     # log Payment
     _royalty: uint256 = convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256 # Percentage that accepts decimals
-    log RoyalityInfo(_royalty, block.timestamp, _salePrice, msg.sender)
     return self.owner, _royalty
 {%- endif %}
 
