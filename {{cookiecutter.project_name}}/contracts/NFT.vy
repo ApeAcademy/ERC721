@@ -148,7 +148,8 @@ MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
 
 {%- if cookiecutter.royalties == 'y' %}
 # @dev Percentage of royalties for lifetime for the creator
-ROYALTY_PERCENTAGE: constant(decimal) = float({{ cookiecutter.royalty_percentage / 100.0 }})
+ROYALTY_PERCENTAGE: constant(decimal) = {{cookiecutter.royalty_percentage}}
+ROYALTY_TO_APPLY_TO_PRICE: constant(decimal) = {{ ROYALTY_PERCENTAGE / 100.0 }}
 {%- endif %}
 
 @external
@@ -297,7 +298,7 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     /// @return royaltyAmount - the royalty payment amount for _salePrice
     """
 
-    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256) # Percentage that accepts decimals
+    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_TO_APPLY_TO_PRICE, uint256) # Percentage that accepts decimals
     return self.owner, royalty
 {%- endif %}
 
