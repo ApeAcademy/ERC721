@@ -542,7 +542,7 @@ def mint(receiver: address) -> bool:
     # Throws if `msg.sender` is not the minter
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
     # Throws if `receiver` is zero address
-    assert _to != empty(address)
+    assert receiver != empty(address)
     # Throws if `totalSupply` count NFTs tracked by this contract is owned by someone
     assert self.idToOwner[self.totalSupply] == empty(address)
     # Create new owner to allocate token
