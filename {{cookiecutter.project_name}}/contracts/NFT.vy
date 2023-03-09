@@ -283,7 +283,7 @@ def getApproved(tokenId: uint256) -> address:
 
 ### TRANSFER FUNCTION HELPERS ###
 
-{%- if cookiecutter.permitable == 'y' %}
+{%- if cookiecutter.royalties == 'y' %}
 ### Royalty integration under the ERC-2981: NFT Royalty Standard
 @view
 @external
@@ -357,6 +357,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
 
     # Change count tracking
     self.balanceOf[owner] -= 1
+    # Add count of token to address
     self.balanceOf[receiver] += 1
 
     # Log the transfer
@@ -538,15 +539,20 @@ def mint(receiver: address) -> bool:
     assert MAX_SUPPLY > self.totalSupply
 {%- endif %} 
 
+    # Throws if `msg.sender` is not the minter
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
-
-    self.totalSupply += 1
-    assert self.idToOwner[self.totalSupply] == empty(address)  # Sanity check
-    
+    # Throws if `receiver` is zero address
+    assert _to != empty(address)
+    # Throws if `totalSupply` count NFTs tracked by this contract is owned by someone
+    assert self.idToOwner[self.totalSupply] == empty(address)
+    # Create new owner to allocate token
     self.idToOwner[self.totalSupply] = receiver
+    # Change count tracking, `totalSupply` generates id for `tokenId`
+    tokenId: uint256 = self.totalSupply += 1
+    # Update balance of minter
     self.balanceOf[receiver] += 1
 
-    log Transfer(empty(address), receiver, self.totalSupply)
+    log Transfer(empty(address), receiver, tokenId)
 
     return True
 {%- endif %}
