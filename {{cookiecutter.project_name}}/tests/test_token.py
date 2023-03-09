@@ -128,7 +128,6 @@ def test_uri(nft, owner):
 
 
 def test_royaltyInfo(nft):
-    ROYALTY_PERCENTAGE = float({{cookiecutter.royalty_percentage}})
-    expected_royalty = float({{ ROYALTY_PERCENTAGE / 100.0 }} * ape.convert("1 ether", int))
+    expected_royalty = int(ape.convert("{{cookiecutter.royalty_percentage}}", float) / 100.0 * ape.convert("1 ether", int))
     assert nft.royaltyInfo(1, "1 ether") == (nft.owner(), pytest.approx(expected_royalty))
 {%- endif %}
