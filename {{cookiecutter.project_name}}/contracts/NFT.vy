@@ -548,12 +548,12 @@ def mint(receiver: address) -> bool:
     assert self.idToOwner[self.totalSupply] == empty(address)
     # Create new owner to allocate token
     self.idToOwner[self.totalSupply] = receiver
-    # Change count tracking, `totalSupply` generates id for `tokenId`
-    tokenId: uint256 = self.totalSupply += 1
+    # Change count tracking, `totalSupply` represents id for `tokenId`
+    self.totalSupply += 1
     # Update balance of minter
     self.balanceOf[receiver] += 1
 
-    log Transfer(empty(address), receiver, tokenId)
+    log Transfer(empty(address), receiver, self.totalSupply)
 
     return True
 {%- endif %}
