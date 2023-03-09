@@ -148,7 +148,7 @@ MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
 
 {%- if cookiecutter.royalties == 'y' %}
 # @dev Percentage of royalties for lifetime for the creator
-ROYALTY_TO_APPLY_TO_PRICE: constant(decimal) = {{ cookiecutter.royalty_percentage_in_decimals/ 100.0 }} 
+ROYALTY_TO_APPLY_TO_PRICE: constant(decimal) = {{ cookiecutter.royalty_percentage_in_decimals }} / 100.0
 {%- endif %}
 
 @external
