@@ -283,7 +283,7 @@ def getApproved(tokenId: uint256) -> address:
 
 ### TRANSFER FUNCTION HELPERS ###
 
-{%- if cookiecutter.royalties == 'y' %}
+{%- if cookiecutter.permitable == 'y' %}
 ### Royalty integration under the ERC-2981: NFT Royalty Standard
 @view
 @external
