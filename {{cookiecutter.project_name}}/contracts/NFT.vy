@@ -148,7 +148,7 @@ MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
 
 {%- if cookiecutter.royalties == 'y' %}
 # @dev Percentage of royalties for lifetime for the creator
-ROYALTY_PERCENTAGE: constant(decimal) = {{ cookiecutter.royalty_percentage / 100.0 }}
+ROYALTY_TO_APPLY_TO_PRICE: constant(decimal) = {{ cookiecutter.royalty_percentage_in_decimals }} / 100.0
 {%- endif %}
 
 @external
@@ -283,7 +283,7 @@ def getApproved(tokenId: uint256) -> address:
 
 ### TRANSFER FUNCTION HELPERS ###
 
-{%- if cookiecutter.permitable == 'y' %}
+{%- if cookiecutter.royalties == 'y' %}
 ### Royalty integration under the ERC-2981: NFT Royalty Standard
 @view
 @external
@@ -297,7 +297,7 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     /// @return royaltyAmount - the royalty payment amount for _salePrice
     """
 
-    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_PERCENTAGE, uint256) # Percentage that accepts decimals
+    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_TO_APPLY_TO_PRICE, uint256) # Percentage that accepts decimals
     return self.owner, royalty
 {%- endif %}
 
@@ -357,6 +357,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
 
     # Change count tracking
     self.balanceOf[owner] -= 1
+    # Add count of token to address
     self.balanceOf[receiver] += 1
 
     # Log the transfer
@@ -538,12 +539,17 @@ def mint(receiver: address) -> bool:
     assert MAX_SUPPLY > self.totalSupply
 {%- endif %} 
 
+    # Throws if `msg.sender` is not the minter
     assert msg.sender == self.owner or self.isMinter[msg.sender], "Access is denied."
-
-    self.totalSupply += 1
-    assert self.idToOwner[self.totalSupply] == empty(address)  # Sanity check
-    
+    # Throws if `receiver` is zero address
+    assert receiver != empty(address)
+    # Throws if `totalSupply` count NFTs tracked by this contract is owned by someone
+    assert self.idToOwner[self.totalSupply] == empty(address)
+    # Create new owner to allocate token
     self.idToOwner[self.totalSupply] = receiver
+    # Change count tracking, `totalSupply` represents id for `tokenId`
+    self.totalSupply += 1
+    # Update balance of minter
     self.balanceOf[receiver] += 1
 
     log Transfer(empty(address), receiver, self.totalSupply)
