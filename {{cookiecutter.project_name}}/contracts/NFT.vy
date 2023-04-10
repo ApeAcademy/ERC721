@@ -31,7 +31,7 @@ interface ERC721Receiver:
             owner: address,
             tokenId: uint256,
             data: Bytes[1024]
-        ) -> bytes4: view
+        ) -> bytes4: nonpayable
 
 # Interface for ERC721Metadata
 
