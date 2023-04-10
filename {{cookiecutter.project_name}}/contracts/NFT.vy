@@ -6,18 +6,32 @@ from vyper.interfaces import ERC721
 implements: ERC165
 implements: ERC721
 
-############ ERC-721 #############
+############ ERC-165 #############
+# @dev Static list of supported ERC165 interface ids
+SUPPORTED_INTERFACES: constant(bytes4[{{ 2 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) + (1 if cookiecutter.royalties == "y" else 0) }}]) = [
+    0x01ffc9a7,  # ERC165 interface ID of ERC165
+    0x80ac58cd,  # ERC165 interface ID of ERC721
+{%- if cookiecutter.metadata == 'y' %}
+    0x5b5e139f,  # ERC165 interface ID of ERC721 Metadata Extension
+{%- endif %}
+{%- if cookiecutter.permitable == 'y' %}
+    0x5604e225,  # ERC165 interface ID of ERC4494
+{%- endif %}
+{%- if cookiecutter.royalties == 'y' %}
+    0x2a55205a,  # ERC165 interface ID of ERC2981
+{%- endif %}
+]
 
+############ ERC-721 #############
 
 # Interface for the contract called by safeTransferFrom()
 interface ERC721Receiver:
     def onERC721Received(
-            _operator: address,
-            _from: address,
-            _tokenId: uint256,
-            _data: Bytes[1024]
+            operator: address,
+            owner: address,
+            tokenId: uint256,
+            data: Bytes[1024]
         ) -> bytes4: nonpayable
-
 
 # Interface for ERC721Metadata
 
@@ -42,23 +56,6 @@ interface ERC721Enumerable:
 		_address: address,
 		_index: uint256
 	) -> uint256: view
-    
-
-############ ERC-165 #############
-# @dev Static list of supported ERC165 interface ids
-SUPPORTED_INTERFACES: constant(bytes4[{{ 2 + (1 if cookiecutter.metadata == "y" else 0) + (1 if cookiecutter.permitable == "y" else 0) + (1 if cookiecutter.royalties == "y" else 0) }}]) = [
-    0x01ffc9a7,  # ERC165 interface ID of ERC165
-    0x80ac58cd,  # ERC165 interface ID of ERC721
-{%- if cookiecutter.metadata == 'y' %}
-    0x5b5e139f,  # ERC165 interface ID of ERC721 Metadata Extension
-{%- endif %}
-{%- if cookiecutter.permitable == 'y' %}
-    0x5604e225,  # ERC165 interface ID of ERC4494
-{%- endif %}
-{%- if cookiecutter.royalties == 'y' %}
-    0x2a55205a,  # ERC165 interface ID of ERC2981
-{%- endif %}
-]
 
 
 # @dev Emits when ownership of any NFT changes by any mechanism. This event emits when NFTs are
