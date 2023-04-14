@@ -92,6 +92,14 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
+{%- if cookiecutter.force_royalties == 'y' %}
+# @dev This emits when the owner of the contract withdrawals royalties
+# @param amount withdrawal by owner of smart contract
+event RoyaltiesWithdrawn:
+    amount: indexed(uint256)
+
+{%- endif %}
+
 owner: public(address)
 isMinter: public(HashMap[address, bool])
 
@@ -108,6 +116,14 @@ isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 
 # @dev Mapping from NFT ID to approved address.
 idToApprovals: public(HashMap[uint256, address])
+{%- if cookiecutter.force_royalties == 'y' %}
+# @dev the last balance of the smart contract that stores the royalties of the contract creator
+# this balance is reset to 0 the moment the creator withdraws royalties
+lastBalance: uint256
+
+# @dev we check this value to make sure royalties have been paid
+royaltyAmount: uint256
+{%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
 ############ ERC-4494 ############
@@ -301,6 +317,49 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     return self.owner, royalty
 {%- endif %}
 
+{%- if cookiecutter.force_royalties == 'y' %}
+# Helper functions in case market place does not support royalties to execute by this contract with _deductRoyalties()
+@internal
+@view
+def _royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
+    """
+    /// @notice Called with the sale price to determine how much royalty
+    //          is owed and to whom. Important; Not all marketplaces respect this, e.g. OpenSea
+    /// @param _tokenId - the NFT asset queried for royalty information
+    /// @param _salePrice - the sale price of the NFT asset specified by _tokenId
+    /// @return receiver - address of who should be sent the royalty payment
+    /// @return owner address and royaltyAmount - the royalty payment amount for _salePrice
+    """
+
+    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_TO_APPLY_TO_PRICE, uint256) # Percentage that accepts decimals
+    return self.owner, royalty
+
+@internal
+def royaltyChecker(tokenId: uint256):
+     # check if royalties hace been paid
+     if self.balance < self.lastBalance:
+        self._deductRoyalties(tokenId)
+        # equal the contract balance to the lastBalance for future checks
+        self.lastBalance = self.balance
+
+@external
+@payable
+def withdrawRoyalties():
+    assert msg.sender == self.owner
+    amount: uint256 = self.balance
+    send(self.owner, amount)
+    self.lastBalance = 0
+    log RoyaltiesWithdrawn(amount)
+
+@internal
+@payable
+def _deductRoyalties(tokenId: uint256):
+    # we calculate royalties and owners address
+    self.owner, self.royaltyAmount = self._royaltyInfo(tokenId, msg.value)
+    # make transaction to the contract
+    send(self, self.royaltyAmount)
+{%- endif %}
+
 @view
 @internal
 def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
@@ -378,6 +437,10 @@ def transferFrom(owner: address, receiver: address, tokenId: uint256):
     @param receiver The new owner.
     @param tokenId The NFT to transfer.
     """
+{%- if cookiecutter.force_royalties == 'y' %}
+    # check if royalties have been paid
+    self.royaltyChecker(tokenId)
+{%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
 
 
@@ -403,6 +466,10 @@ def safeTransferFrom(
     @param tokenId The NFT to transfer.
     @param data Additional data with no specified format, sent in call to `receiver`.
     """
+{%- if cookiecutter.force_royalties == 'y' %}
+    # check if royalties have been paid
+    self.royaltyChecker(tokenId)
+{%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
     if receiver.is_contract: # check if `receiver` is a contract address
         returnValue: bytes4 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
