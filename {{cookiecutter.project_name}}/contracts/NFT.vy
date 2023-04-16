@@ -92,14 +92,6 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
-{%- if cookiecutter.force_royalties == 'y' %}
-# @dev This emits when the owner of the contract withdrawals royalties
-# @param amount withdrawal by owner of smart contract
-event RoyaltiesWithdrawn:
-    amount: indexed(uint256)
-
-{%- endif %}
-
 owner: public(address)
 isMinter: public(HashMap[address, bool])
 
@@ -116,13 +108,12 @@ isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 
 # @dev Mapping from NFT ID to approved address.
 idToApprovals: public(HashMap[uint256, address])
-{%- if cookiecutter.force_royalties == 'y' %}
-# @dev the last balance of the smart contract that stores the royalties of the contract creator
-# this balance is reset to 0 the moment the creator withdraws royalties
-lastBalance: uint256
 
+{%- if cookiecutter.force_royalties == 'y' %}
 # @dev we check this value to make sure royalties have been paid
-royaltyAmount: uint256
+# @dev this can also be used to explore a based floor price oracle for a minimum royalty payment to the creator
+# @ dev current implementation sends to the smart contract the apply % in royalties to the creator
+minRoyaltyAmount: uint256
 {%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
@@ -154,8 +145,6 @@ baseURI: public(String[100])
 BASE_URI: constant(String[100]) = "{{cookiecutter.base_uri}}"
 {%- endif %}
 
-
-
 {%- if cookiecutter.max_supply == 'y' %}
 # @dev Maximum supply of token
 MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
@@ -181,6 +170,10 @@ def __init__():
     self.baseURI = "{{cookiecutter.base_uri}}"
 {%- endif %}
 
+# @dev the default value for the minRoyaltyAmount is 0.01 ETH = 10**16 
+{%- if cookiecutter.force_royalties == 'y' %}
+    self.minRoyaltyAmount = {{ cookiecutter.minRoyaltyAmount }}
+{%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
@@ -310,7 +303,7 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     /// @param _tokenId - the NFT asset queried for royalty information
     /// @param _salePrice - the sale price of the NFT asset specified by _tokenId
     /// @return receiver - address of who should be sent the royalty payment
-    /// @return royaltyAmount - the royalty payment amount for _salePrice
+    /// @return minRoyaltyAmount - the minimum royalty payment amount for _salePrice
     """
 
     royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_TO_APPLY_TO_PRICE, uint256) # Percentage that accepts decimals
@@ -328,36 +321,20 @@ def _royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     /// @param _tokenId - the NFT asset queried for royalty information
     /// @param _salePrice - the sale price of the NFT asset specified by _tokenId
     /// @return receiver - address of who should be sent the royalty payment
-    /// @return owner address and royaltyAmount - the royalty payment amount for _salePrice
+    /// @return owner address and minRoyaltyAmount - the minimum royalty payment amount for _salePrice
     """
 
     royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_TO_APPLY_TO_PRICE, uint256) # Percentage that accepts decimals
-    return self.owner, royalty
+    # NOTE: We are returning `self` as the receiver of the royalty to enforce payment to `self.owner` later
+    return self, max(self.minRoyaltyAmount, royalty)
 
 @internal
-def royaltyChecker(tokenId: uint256):
+def _enforceRoyalties(tokenId: uint256):
      # check if royalties hace been paid
-     if self.balance < self.lastBalance:
-        self._deductRoyalties(tokenId)
-        # equal the contract balance to the lastBalance for future checks
-        self.lastBalance = self.balance
+     assert self.balance >= self.minRoyaltyAmount
+     # Send all balance to the owner (clears `self.balance`)
+     send(self.owner, self.balance)
 
-@external
-@payable
-def withdrawRoyalties():
-    assert msg.sender == self.owner
-    amount: uint256 = self.balance
-    send(self.owner, amount)
-    self.lastBalance = 0
-    log RoyaltiesWithdrawn(amount)
-
-@internal
-@payable
-def _deductRoyalties(tokenId: uint256):
-    # we calculate royalties and owners address
-    self.owner, self.royaltyAmount = self._royaltyInfo(tokenId, msg.value)
-    # make transaction to the contract
-    send(self, self.royaltyAmount)
 {%- endif %}
 
 @view
@@ -439,7 +416,7 @@ def transferFrom(owner: address, receiver: address, tokenId: uint256):
     """
 {%- if cookiecutter.force_royalties == 'y' %}
     # check if royalties have been paid
-    self.royaltyChecker(tokenId)
+    self._enforceRoyalties(tokenId)
 {%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
 
@@ -468,7 +445,7 @@ def safeTransferFrom(
     """
 {%- if cookiecutter.force_royalties == 'y' %}
     # check if royalties have been paid
-    self.royaltyChecker(tokenId)
+    self._enforceRoyalties(tokenId)
 {%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
     if receiver.is_contract: # check if `receiver` is a contract address
