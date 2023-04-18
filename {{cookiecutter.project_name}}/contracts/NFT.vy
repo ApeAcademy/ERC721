@@ -311,7 +311,7 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
 {%- endif %}
 
 {%- if cookiecutter.force_royalties == 'y' %}
-# Helper functions in case market place does not support royalties to execute by this contract with _deductRoyalties()
+# Helper functions in case market place does not support royalties to execute by this contract with _enforceRoyalties()
 @internal
 @view
 def _royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
