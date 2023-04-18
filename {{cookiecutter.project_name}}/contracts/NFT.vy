@@ -111,8 +111,8 @@ idToApprovals: public(HashMap[uint256, address])
 
 {%- if cookiecutter.force_royalties == 'y' %}
 # @dev we check this value to make sure royalties have been paid
-# @dev this can also be used to explore a based floor price oracle for a minimum royalty payment to the creator
-# @ dev current implementation sends to the smart contract the apply % in royalties to the creator
+# this can also be used to explore a based floor price oracle for a minimum royalty payment to the creator
+# current implementation sends to the smart contract the apply % in royalties to the creator
 minRoyaltyAmount: public(uint256)
 {%- endif %}
 
