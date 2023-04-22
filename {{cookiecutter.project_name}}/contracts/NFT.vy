@@ -401,6 +401,7 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
 
 
 @external
+@payable
 def transferFrom(owner: address, receiver: address, tokenId: uint256):
     """
     @dev Throws unless `msg.sender` is the current owner, an authorized operator, or the approved
@@ -422,6 +423,7 @@ def transferFrom(owner: address, receiver: address, tokenId: uint256):
 
 
 @external
+@payable
 def safeTransferFrom(
         owner: address,
         receiver: address,
