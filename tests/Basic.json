@@ -11,8 +11,8 @@
     "max_supply_amount": 3,
     "permitable": "y",
     "royalties": "y",
-    "force_royalties": "y",
     "royalty_percentage_in_decimals": 10.0,
-    "minRoyaltyAmount": 10000000000000000
+    "force_royalties": "y",
+    "minRoyaltyAmount": 1000000000000000
   }
 }

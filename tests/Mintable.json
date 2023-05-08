@@ -1,19 +1,18 @@
 {
   "cookiecutter": {
-    "project_name": "Mintable",
+    "project_name": "Basic",
     "token_name": "MyToken",
     "token_symbol": "TEST",
-    "updatable_uri": "n",
+    "updatable_uri": "y",
     "base_uri": "ipfs://QmaZm1rAkt6kHTKTFX8GwEhtPMVMeAGJYMBvoAcJWTddwb",
-    "metadata": "n",
+    "metadata": "y",
     "mintable": "y",
     "max_supply": "y",
     "max_supply_amount": 3,
     "permitable": "y",
     "royalties": "y",
-    "force_royalties": "y",
     "royalty_percentage_in_decimals": 10.0,
-    "minRoyaltyAmount": 10000000000000000
-    
+    "force_royalties": "y",
+    "minRoyaltyAmount": 1000000000000000
   }
 }

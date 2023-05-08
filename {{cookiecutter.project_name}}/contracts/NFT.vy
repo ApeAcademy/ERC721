@@ -145,6 +145,8 @@ baseURI: public(String[100])
 BASE_URI: constant(String[100]) = "{{cookiecutter.base_uri}}"
 {%- endif %}
 
+
+
 {%- if cookiecutter.max_supply == 'y' %}
 # @dev Maximum supply of token
 MAX_SUPPLY: constant(uint256) = {{cookiecutter.max_supply_amount}}
@@ -174,6 +176,7 @@ def __init__():
 {%- if cookiecutter.force_royalties == 'y' %}
     self.minRoyaltyAmount = {{ cookiecutter.minRoyaltyAmount }}
 {%- endif %}
+
 
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
@@ -303,38 +306,15 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     /// @param _tokenId - the NFT asset queried for royalty information
     /// @param _salePrice - the sale price of the NFT asset specified by _tokenId
     /// @return receiver - address of who should be sent the royalty payment
-    /// @return minRoyaltyAmount - the minimum royalty payment amount for _salePrice
+    /// @return royaltyAmount - the royalty payment amount for _salePrice
     """
 
     royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_TO_APPLY_TO_PRICE, uint256) # Percentage that accepts decimals
-    return self.owner, royalty
-{%- endif %}
-
-{%- if cookiecutter.force_royalties == 'y' %}
-# Helper functions in case market place does not support royalties to execute by this contract with _enforceRoyalties()
-@internal
-@view
-def _royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
-    """
-    /// @notice Called with the sale price to determine how much royalty
-    //          is owed and to whom. Important; Not all marketplaces respect this, e.g. OpenSea
-    /// @param _tokenId - the NFT asset queried for royalty information
-    /// @param _salePrice - the sale price of the NFT asset specified by _tokenId
-    /// @return receiver - address of who should be sent the royalty payment
-    /// @return owner address and minRoyaltyAmount - the minimum royalty payment amount for _salePrice
-    """
-
-    royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_TO_APPLY_TO_PRICE, uint256) # Percentage that accepts decimals
-    # NOTE: We are returning `self` as the receiver of the royalty to enforce payment to `self.owner` later
+    {%- if cookiecutter.force_royalties == 'y' %}
     return self, max(self.minRoyaltyAmount, royalty)
-
-@internal
-def _enforceRoyalties(tokenId: uint256):
-     # check if royalties hace been paid
-     assert self.balance >= self.minRoyaltyAmount
-     # Send all balance to the owner (clears `self.balance`)
-     send(self.owner, self.balance)
-
+    {%- else  %}
+    return self.owner, royalty
+    {%- endif %}
 {%- endif %}
 
 @view
@@ -359,6 +339,15 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
         return True
 
     return False
+
+
+# Royality Functions
+{%- if cookiecutter.force_royalties == 'y' %}
+def _enforceRoyalties(caller: address, tokenId: uint256):
+    assert self.balance >= self.minRoyaltyAmount
+    # Send all balance to the owner (clears `self.balance`)
+    send(self.owner, self.balance)
+{%- endif %}
 
 
 @internal
@@ -401,7 +390,6 @@ def _transferFrom(owner: address, receiver: address, tokenId: uint256, sender: a
 
 
 @external
-@payable
 def transferFrom(owner: address, receiver: address, tokenId: uint256):
     """
     @dev Throws unless `msg.sender` is the current owner, an authorized operator, or the approved
@@ -415,15 +403,13 @@ def transferFrom(owner: address, receiver: address, tokenId: uint256):
     @param receiver The new owner.
     @param tokenId The NFT to transfer.
     """
-{%- if cookiecutter.force_royalties == 'y' %}
-    # check if royalties have been paid
-    self._enforceRoyalties(tokenId)
-{%- endif %}
+    {%- if cookiecutter.force_royalties == 'y' %}
+    self._enforceRoyalties(msg.sender, tokenId)
+    {%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
 
 
 @external
-@payable
 def safeTransferFrom(
         owner: address,
         receiver: address,
@@ -445,10 +431,9 @@ def safeTransferFrom(
     @param tokenId The NFT to transfer.
     @param data Additional data with no specified format, sent in call to `receiver`.
     """
-{%- if cookiecutter.force_royalties == 'y' %}
-    # check if royalties have been paid
-    self._enforceRoyalties(tokenId)
-{%- endif %}
+    {%- if cookiecutter.force_royalties == 'y' %}
+    self._enforceRoyalties(msg.sender, tokenId)
+    {%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
     if receiver.is_contract: # check if `receiver` is a contract address
         returnValue: bytes4 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
