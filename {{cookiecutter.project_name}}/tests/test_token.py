@@ -59,11 +59,11 @@ def test_transfer(nft, owner, receiver):
     nft.mint(owner, sender=owner)
     assert nft.balanceOf(owner) == 1
     assert nft.ownerOf(0) == owner.address
-    nft.transferFrom(owner, receiver, 0, sender=owner)
+    nft.transferFrom(owner, receiver, 0, value=nft.minRoyaltyAmount(), sender=owner)
     assert nft.ownerOf(0) == receiver.address
     assert nft.balanceOf(owner) == 0
     assert nft.balanceOf(receiver) == 1
-    nft.transferFrom(receiver, owner, 0, sender=receiver)
+    nft.transferFrom(receiver, owner, 0, value=nft.minRoyaltyAmount(), sender=receiver)
     assert nft.balanceOf(receiver) == 0
     assert nft.balanceOf(owner) == 1
     assert nft.ownerOf(0) == owner.address
@@ -74,7 +74,7 @@ def test_incorrect_signer_transfer(nft, owner, receiver):
     assert nft.balanceOf(receiver) == 0
     nft.mint(owner, sender=owner)
     with ape.reverts():
-        nft.transferFrom(owner,receiver,0,sender=receiver)    
+        nft.transferFrom(owner, receiver, 0, value=nft.minRoyaltyAmount(), sender=receiver)
     assert nft.balanceOf(receiver) == 0
     assert nft.balanceOf(owner) == 1
     assert nft.ownerOf(0) == owner.address
@@ -100,14 +100,14 @@ def test_approve_transfer(nft, owner, receiver):
     
     with ape.reverts():
         nft.approve(receiver, 0, sender=receiver)
-        nft.transferFrom(owner, receiver, 0, sender=receiver)
+        nft.transferFrom(owner, receiver, 0, value=nft.minRoyaltyAmount(), sender=receiver)
     assert nft.balanceOf(receiver) == 0
     assert nft.balanceOf(owner) == 1
     assert nft.ownerOf(0) == owner.address
 
     nft.approve(receiver, 0, sender=owner)
     assert nft.getApproved(0) == receiver
-    nft.transferFrom(owner, receiver, 0, sender=receiver)
+    nft.transferFrom(owner, receiver, 0, value=nft.minRoyaltyAmount(), sender=receiver)
     assert nft.balanceOf(receiver) == 1
     assert nft.balanceOf(owner) == 0
     assert nft.ownerOf(0) == receiver.address
