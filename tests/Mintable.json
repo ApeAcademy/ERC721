@@ -12,7 +12,7 @@
     "permitable": "y",
     "royalties": "y",
     "royalty_percentage_in_decimals": 10.0,
-    "force_royalties": "y",
-    "minRoyaltyAmount": 1000000000000000
+    "force_royalties": "n",
+    "minRoyaltyAmount": 0
   }
 }
