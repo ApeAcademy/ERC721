@@ -110,9 +110,9 @@ isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 idToApprovals: public(HashMap[uint256, address])
 
 {%- if cookiecutter.force_royalties == 'y' %}
-# @dev we check this value to make sure royalties have been paid
-# this can also be used to explore a based floor price oracle for a minimum royalty payment to the creator
-# current implementation sends to the smart contract the apply % in royalties to the creator
+# @dev The minimum amount of royalties that should be paid to transfer a token successfully
+# NOTE: this can be used to track the floor price for enforcing a minimum royalty payment to the creator
+# NOTE: current implementation requires paying directly to the smart contract, which forwards to the creator
 minRoyaltyAmount: public(uint256)
 {%- endif %}
 
