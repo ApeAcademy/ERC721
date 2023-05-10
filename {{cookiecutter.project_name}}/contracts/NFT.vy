@@ -343,6 +343,8 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
 
 # Royality Functions
 {%- if cookiecutter.force_royalties == 'y' %}
+@internal
+@payable
 def _enforceRoyalties(caller: address, tokenId: uint256):
     assert self.balance >= self.minRoyaltyAmount
     # Send all balance to the owner (clears `self.balance`)
