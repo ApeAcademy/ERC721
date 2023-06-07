@@ -1,9 +1,9 @@
 {
   "cookiecutter": {
-    "project_name": "Basic",
+    "project_name": "Mintable",
     "token_name": "MyToken",
     "token_symbol": "TEST",
-    "updatable_uri": "y",
+    "updatable_uri": "n",
     "base_uri": "ipfs://QmaZm1rAkt6kHTKTFX8GwEhtPMVMeAGJYMBvoAcJWTddwb",
     "metadata": "n",
     "mintable": "n",
