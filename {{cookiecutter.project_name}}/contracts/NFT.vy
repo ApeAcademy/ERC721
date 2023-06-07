@@ -92,6 +92,15 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
+event PaymentReceived:
+    sender: indexed(address)
+    amount: uint256
+
+event Withdrawal:
+    to: indexed(address)
+    amount: uint256
+
+
 owner: public(address)
 isMinter: public(HashMap[address, bool])
 
@@ -110,10 +119,19 @@ isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 idToApprovals: public(HashMap[uint256, address])
 
 {%- if cookiecutter.force_royalties == 'y' %}
-# @dev we check this value to make sure royalties have been paid
-# this can also be used to explore a based floor price oracle for a minimum royalty payment to the creator
-# current implementation sends to the smart contract the apply % in royalties to the creator
+# @dev The minimum amount of royalties that should be paid to transfer a token successfully
+# NOTE: this can be used to track the floor price for enforcing a minimum royalty payment to the creator
+# NOTE: current implementation requires paying directly to the smart contract, which forwards to the creator
 minRoyaltyAmount: public(uint256)
+
+# Percentage threshold to decide whether the minRoyaltyAmount should be increased or decreased.
+thresholdPercentage: public(decimal)
+
+lastBalance: public(uint256)
+
+totalReceived: public(uint256)
+
+payments: HashMap[address, uint256]
 {%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
@@ -175,6 +193,8 @@ def __init__():
 # @dev the default value for the minRoyaltyAmount is 0.01 ETH = 10**16 
 {%- if cookiecutter.force_royalties == 'y' %}
     self.minRoyaltyAmount = {{ cookiecutter.minRoyaltyAmount }}
+    self.thresholdPercentage = {{ cookiecutter.thresholdPercentage }}
+    self.lastBalance = self.balance
 {%- endif %}
 
 
@@ -189,6 +209,32 @@ def __init__():
             self,
         )
     )
+{%- endif %}
+
+
+{%- if cookiecutter.force_royalties == 'y' %}
+@external
+@payable
+def __default__():
+    # Check if the incoming payment is less than the minimum royalty amount
+    if msg.value < self.minRoyaltyAmount:
+        raise "Royalties not paid correctly."
+
+    # Calculate the expected minimum based on the current minimum royalty amount and the threshold
+    expectedMin: uint256 = self.minRoyaltyAmount * convert(1.0 + self.thresholdPercentage, uint256)
+
+    # Convert balance to uint256 for comparison
+    balanceInWei: uint256 = self.balance
+
+    # Check if balance has increased by more than the expected minimum
+    if balanceInWei > self.lastBalance + expectedMin:
+        # Increase minRoyaltyAmount by a certain percentage (for example, by 5%)
+        self.minRoyaltyAmount = convert(convert(self.minRoyaltyAmount, decimal) * 1.05, uint256)
+    elif balanceInWei < self.lastBalance + expectedMin:
+        # Decrease minRoyaltyAmount by a certain percentage (for example, by 5%)
+        self.minRoyaltyAmount = convert(convert(self.minRoyaltyAmount, decimal) * 0.95, uint256)
+
+    self.lastBalance = balanceInWei
 {%- endif %}
 
 {%- if cookiecutter.metadata == 'y' %}
@@ -317,6 +363,16 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     {%- endif %}
 {%- endif %}
 
+{%- if cookiecutter.force_royalties == 'y' %}
+@external
+def withdraw():
+    assert msg.sender == self.owner
+    amount: uint256 = self.balance
+    send(self.owner, amount)
+    log Withdrawal(self.owner, amount)
+    self.lastBalance = self.balance  # This should be 0 after the withdrawal
+{%- endif %}
+
 @view
 @internal
 def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
@@ -343,10 +399,17 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
 
 # Royality Functions
 {%- if cookiecutter.force_royalties == 'y' %}
-def _enforceRoyalties(caller: address, tokenId: uint256):
-    assert self.balance >= self.minRoyaltyAmount
-    # Send all balance to the owner (clears `self.balance`)
-    send(self.owner, self.balance)
+@internal
+def _enforceRoyalties():
+    # Calculate the payment amount from the most recent transaction
+    payment: uint256 = self.balance - self.lastBalance
+
+    # Ensure the payment is not less than the minimum royalty amount
+    if payment < self.minRoyaltyAmount:
+        raise "Insufficient payment."
+
+    # Update the last balance
+    self.lastBalance = self.balance
 {%- endif %}
 
 
@@ -404,7 +467,7 @@ def transferFrom(owner: address, receiver: address, tokenId: uint256):
     @param tokenId The NFT to transfer.
     """
     {%- if cookiecutter.force_royalties == 'y' %}
-    self._enforceRoyalties(msg.sender, tokenId)
+    self._enforceRoyalties()
     {%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
 
@@ -432,7 +495,7 @@ def safeTransferFrom(
     @param data Additional data with no specified format, sent in call to `receiver`.
     """
     {%- if cookiecutter.force_royalties == 'y' %}
-    self._enforceRoyalties(msg.sender, tokenId)
+    self._enforceRoyalties()
     {%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
     if receiver.is_contract: # check if `receiver` is a contract address

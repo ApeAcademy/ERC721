@@ -13,7 +13,8 @@
     "royalties": "y",
     "royalty_percentage_in_decimals": 10.0,
     "force_royalties": "n",
-    "minRoyaltyAmount": 0
+    "minRoyaltyAmount": 0,
+    "thresholdPercentage": 0.0
     
   }
 }
