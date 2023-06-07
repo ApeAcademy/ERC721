@@ -212,31 +212,6 @@ def __init__():
 {%- endif %}
 
 
-{%- if cookiecutter.force_royalties == 'y' %}
-@external
-@payable
-def __default__():
-    # Check if the incoming payment is less than the minimum royalty amount
-    if msg.value < self.minRoyaltyAmount:
-        raise "Royalties not paid correctly."
-
-    # Calculate the expected minimum based on the current minimum royalty amount and the threshold
-    expectedMin: uint256 = self.minRoyaltyAmount * convert(1.0 + self.thresholdPercentage, uint256)
-
-    # Convert balance to uint256 for comparison
-    balanceInWei: uint256 = self.balance
-
-    # Check if balance has increased by more than the expected minimum
-    if balanceInWei > self.lastBalance + expectedMin:
-        # Increase minRoyaltyAmount by a certain percentage (for example, by 5%)
-        self.minRoyaltyAmount = convert(convert(self.minRoyaltyAmount, decimal) * 1.05, uint256)
-    elif balanceInWei < self.lastBalance + expectedMin:
-        # Decrease minRoyaltyAmount by a certain percentage (for example, by 5%)
-        self.minRoyaltyAmount = convert(convert(self.minRoyaltyAmount, decimal) * 0.95, uint256)
-
-    self.lastBalance = balanceInWei
-{%- endif %}
-
 {%- if cookiecutter.metadata == 'y' %}
 # ERC721 Metadata Extension
 @pure
@@ -401,14 +376,22 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
 {%- if cookiecutter.force_royalties == 'y' %}
 @internal
 def _enforceRoyalties():
-    # Calculate the payment amount from the most recent transaction
-    payment: uint256 = self.balance - self.lastBalance
-
     # Ensure the payment is not less than the minimum royalty amount
-    if payment < self.minRoyaltyAmount:
-        raise "Insufficient payment."
+    if self.balance - self.lastBalance < self.minRoyaltyAmount:
+        raise "Royalties not paid correctly."
+    
+    # Calculate the expected minimum based on the current minimum royalty amount and the threshold
+    expectedMin: uint256 = self.minRoyaltyAmount * convert(1.0 + self.thresholdPercentage, uint256)
+    balanceChange: uint256 = self.balance - self.lastBalance
 
-    # Update the last balance
+    # Check if balance has increased by more than the expected minimum
+    if balanceChange > expectedMin:
+        # Increase minRoyaltyAmount by a certain percentage (for example, by 5%)
+        self.minRoyaltyAmount = convert(convert(self.minRoyaltyAmount, decimal) * 1.05, uint256)
+    elif balanceChange < expectedMin:
+        # Decrease minRoyaltyAmount by a certain percentage (for example, by 5%)
+        self.minRoyaltyAmount = convert(convert(self.minRoyaltyAmount, decimal) * 0.95, uint256)
+    # Update the last balance after processing the payment
     self.lastBalance = self.balance
 {%- endif %}
 

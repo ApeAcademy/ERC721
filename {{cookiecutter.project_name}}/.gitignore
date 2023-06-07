@@ -41,7 +41,6 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
-__local__.json
 htmlcov/
 .tox/
 .nox/
@@ -49,7 +48,6 @@ charmap.json.gz
 .coverage
 .coverage.*
 .cache
-.DS_Store
 nosetests.xml
 coverage.xml
 *.cover
