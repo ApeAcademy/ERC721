@@ -92,6 +92,15 @@ event ApprovalForAll:
     operator: indexed(address)
     approved: bool
 
+event PaymentReceived:
+    sender: indexed(address)
+    amount: uint256
+
+event Withdrawal:
+    to: indexed(address)
+    amount: uint256
+
+
 owner: public(address)
 isMinter: public(HashMap[address, bool])
 
@@ -108,6 +117,22 @@ isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
 
 # @dev Mapping from NFT ID to approved address.
 idToApprovals: public(HashMap[uint256, address])
+
+{%- if cookiecutter.force_royalties == 'y' %}
+# @dev The minimum amount of royalties that should be paid to transfer a token successfully
+# NOTE: this can be used to track the floor price for enforcing a minimum royalty payment to the creator
+# NOTE: current implementation requires paying directly to the smart contract, which forwards to the creator
+minRoyaltyAmount: public(uint256)
+
+# Percentage threshold to decide whether the minRoyaltyAmount should be increased or decreased.
+thresholdPercentage: public(decimal)
+
+lastBalance: public(uint256)
+
+totalReceived: public(uint256)
+
+payments: HashMap[address, uint256]
+{%- endif %}
 
 {%- if cookiecutter.permitable == 'y' %}
 ############ ERC-4494 ############
@@ -165,6 +190,13 @@ def __init__():
     self.baseURI = "{{cookiecutter.base_uri}}"
 {%- endif %}
 
+# @dev the default value for the minRoyaltyAmount is 0.01 ETH = 10**16 
+{%- if cookiecutter.force_royalties == 'y' %}
+    self.minRoyaltyAmount = {{ cookiecutter.minRoyaltyAmount }}
+    self.thresholdPercentage = {{ cookiecutter.thresholdPercentage }}
+    self.lastBalance = self.balance
+{%- endif %}
+
 
 {%- if cookiecutter.permitable == 'y' %}
     # ERC712 domain separator for ERC4494
@@ -178,6 +210,7 @@ def __init__():
         )
     )
 {%- endif %}
+
 
 {%- if cookiecutter.metadata == 'y' %}
 # ERC721 Metadata Extension
@@ -298,7 +331,21 @@ def royaltyInfo(_tokenId: uint256, _salePrice: uint256) -> (address, uint256):
     """
 
     royalty: uint256 = convert(convert(_salePrice, decimal) * ROYALTY_TO_APPLY_TO_PRICE, uint256) # Percentage that accepts decimals
+    {%- if cookiecutter.force_royalties == 'y' %}
+    return self, max(self.minRoyaltyAmount, royalty)
+    {%- else  %}
     return self.owner, royalty
+    {%- endif %}
+{%- endif %}
+
+{%- if cookiecutter.force_royalties == 'y' %}
+@external
+def withdraw():
+    assert msg.sender == self.owner
+    amount: uint256 = self.balance
+    send(self.owner, amount)
+    log Withdrawal(self.owner, amount)
+    self.lastBalance = self.balance  # This should be 0 after the withdrawal
 {%- endif %}
 
 @view
@@ -323,6 +370,30 @@ def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
         return True
 
     return False
+
+
+# Royality Functions
+{%- if cookiecutter.force_royalties == 'y' %}
+@internal
+def _enforceRoyalties():
+    # Ensure the payment is not less than the minimum royalty amount
+    if self.balance - self.lastBalance < self.minRoyaltyAmount:
+        raise "Royalties not paid correctly."
+    
+    # Calculate the expected minimum based on the current minimum royalty amount and the threshold
+    expectedMin: uint256 = self.minRoyaltyAmount * convert(1.0 + self.thresholdPercentage, uint256)
+    balanceChange: uint256 = self.balance - self.lastBalance
+
+    # Check if balance has increased by more than the expected minimum
+    if balanceChange > expectedMin:
+        # Increase minRoyaltyAmount by a certain percentage (for example, by 5%)
+        self.minRoyaltyAmount = convert(convert(self.minRoyaltyAmount, decimal) * 1.05, uint256)
+    elif balanceChange < expectedMin:
+        # Decrease minRoyaltyAmount by a certain percentage (for example, by 5%)
+        self.minRoyaltyAmount = convert(convert(self.minRoyaltyAmount, decimal) * 0.95, uint256)
+    # Update the last balance after processing the payment
+    self.lastBalance = self.balance
+{%- endif %}
 
 
 @internal
@@ -378,6 +449,9 @@ def transferFrom(owner: address, receiver: address, tokenId: uint256):
     @param receiver The new owner.
     @param tokenId The NFT to transfer.
     """
+    {%- if cookiecutter.force_royalties == 'y' %}
+    self._enforceRoyalties()
+    {%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
 
 
@@ -403,6 +477,9 @@ def safeTransferFrom(
     @param tokenId The NFT to transfer.
     @param data Additional data with no specified format, sent in call to `receiver`.
     """
+    {%- if cookiecutter.force_royalties == 'y' %}
+    self._enforceRoyalties()
+    {%- endif %}
     self._transferFrom(owner, receiver, tokenId, msg.sender)
     if receiver.is_contract: # check if `receiver` is a contract address
         returnValue: bytes4 = ERC721Receiver(receiver).onERC721Received(msg.sender, owner, tokenId, data)
